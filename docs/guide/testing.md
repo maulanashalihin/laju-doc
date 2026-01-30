@@ -4,6 +4,52 @@ Complete guide for testing Laju applications with Vitest and Playwright.
 
 ## Setup
 
+### Configuration
+
+Laju uses Vitest for testing with the following setup:
+
+```typescript
+// vitest.config.ts
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['tests/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html']
+    }
+  }
+});
+```
+
+### Test Database
+
+```typescript
+// tests/setup.ts
+import DB from '../app/services/DB';
+
+beforeAll(async () => {
+  // Use test database
+  process.env.DB_CONNECTION = 'test';
+  
+  // Run migrations
+  await DB.migrate.latest();
+});
+
+afterAll(async () => {
+  await DB.destroy();
+});
+
+beforeEach(async () => {
+  // Clean tables before each test
+  await DB.deleteFrom('users').execute();
+  await DB.deleteFrom('posts').execute();
+});
+```
+
 ### Commands
 
 ```bash
@@ -106,23 +152,23 @@ import DB from '../../app/services/DB';
 
 describe('Posts CRUD', () => {
   beforeEach(async () => {
-    await DB.deleteFrom("posts").execute();
+    await DB.deleteFrom('posts').execute();
   });
 
   it('should create a post', async () => {
     const post = {
-      id: '1',
+      id: 'post-1',
       title: 'Test Post',
       content: 'Test content',
       created_at: Date.now(),
       updated_at: Date.now()
     };
 
-    await DB.insertInto("posts").values(post).execute();
+    await DB.insertInto('posts').values(post).execute();
     
-    const saved = await DB.selectFrom("posts")
+    const saved = await DB.selectFrom('posts')
       .selectAll()
-      .where("id", "=", "1")
+      .where('id', '=', 'post-1')
       .executeTakeFirst();
     
     expect(saved?.title).toBe('Test Post');
@@ -130,43 +176,46 @@ describe('Posts CRUD', () => {
   });
 
   it('should update a post', async () => {
-    await DB.insertInto("posts").values({
-      id: '1',
+    await DB.insertInto('posts').values({
+      id: 'post-1',
       title: 'Original',
       content: 'Content',
       created_at: Date.now(),
       updated_at: Date.now()
     }).execute();
 
-    await DB.updateTable("posts")
-      .set({ title: 'Updated' })
-      .where("id", "=", "1")
+    await DB.updateTable('posts')
+      .set({
+        title: 'Updated',
+        updated_at: Date.now()
+      })
+      .where('id', '=', 'post-1')
       .execute();
     
-    const post = await DB.selectFrom("posts")
+    const post = await DB.selectFrom('posts')
       .selectAll()
-      .where("id", "=", "1")
+      .where('id', '=', 'post-1')
       .executeTakeFirst();
     
     expect(post?.title).toBe('Updated');
   });
 
   it('should delete a post', async () => {
-    await DB.insertInto("posts").values({
-      id: '1',
+    await DB.insertInto('posts').values({
+      id: 'post-1',
       title: 'To Delete',
       content: 'Content',
       created_at: Date.now(),
       updated_at: Date.now()
     }).execute();
 
-    await DB.deleteFrom("posts")
-      .where("id", "=", "1")
+    await DB.deleteFrom('posts')
+      .where('id', '=', 'post-1')
       .execute();
     
-    const post = await DB.selectFrom("posts")
+    const post = await DB.selectFrom('posts')
       .selectAll()
-      .where("id", "=", "1")
+      .where('id', '=', 'post-1')
       .executeTakeFirst();
     
     expect(post).toBeUndefined();
@@ -176,9 +225,57 @@ describe('Posts CRUD', () => {
 
 ## E2E Tests
 
+End-to-end testing with Playwright for testing user flows in real browsers.
+
 ### Setup
 
-Playwright is configured in `playwright.config.ts`.
+#### Installation
+
+```bash
+# Install Playwright
+npm install -D @playwright/test
+
+# Install browsers (only required once)
+npm run test:e2e:install
+```
+
+#### Configuration
+
+Playwright is configured in `playwright.config.ts`:
+
+```typescript
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests/e2e',
+  fullyParallel: false,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: 1,
+  reporter: 'html',
+
+  use: {
+    baseURL: 'http://localhost:5555',
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+  },
+
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
+
+  // Auto-start server in CI
+  webServer: process.env.CI ? {
+    command: 'npm run build && npm run start',
+    url: 'http://localhost:5553',
+    timeout: 120 * 1000,
+  } : undefined,
+});
+```
 
 ### Commands
 
@@ -194,20 +291,9 @@ npm run test:e2e:debug
 
 # Run specific test file
 npx playwright test homepage.spec.ts
-```
 
-### Local Development
-
-For local development, start the server manually before running tests:
-
-**Terminal 1:**
-```bash
-npm run dev
-```
-
-**Terminal 2:**
-```bash
-npm run test:e2e:ui
+# Run in specific browser
+npx playwright test --project=chromium
 ```
 
 ### Testing Authentication Flows
@@ -257,6 +343,21 @@ test.describe('Login Page', () => {
 
     // Button should be disabled during submission
     await expect(submitButton).toBeDisabled();
+
+    // Check for loading text
+    await expect(submitButton).toContainText('Signing in');
+  });
+
+  test('should navigate to register page', async ({ page }) => {
+    // Use text-based selector for Inertia links
+    const registerLink = page.getByText('Create one');
+
+    // Click register link
+    await registerLink.click();
+
+    // Should navigate to register page
+    await page.waitForURL('**/register', { timeout: 5000 });
+    expect(page.url()).toContain('/register');
   });
 });
 ```
@@ -273,13 +374,15 @@ test.describe('Registration Form', () => {
   });
 
   test('should validate password mismatch', async ({ page }) => {
+    const passwordInput = page.locator('input[name="password"]');
+    const confirmPasswordInput = page.locator('input[name="confirm-password"]');
     const submitButton = page.locator('button[type="submit"]');
 
     // Fill with mismatched passwords
     await page.fill('input[name="name"]', 'Test User');
     await page.fill('input[name="email"]', 'test@example.com');
-    await page.fill('input[name="password"]', 'password123');
-    await page.fill('input[name="confirm-password"]', 'different123');
+    await passwordInput.fill('password123');
+    await confirmPasswordInput.fill('different123');
 
     // Submit form
     await submitButton.click();
@@ -289,23 +392,26 @@ test.describe('Registration Form', () => {
     await expect(errorText.first()).toBeVisible();
     await expect(errorText.first()).toContainText('do not match');
   });
+
+  test('should generate password', async ({ page }) => {
+    const generateButton = page.locator('button:has-text("Generate secure password")');
+    const passwordInput = page.locator('input[name="password"]');
+    const confirmPasswordInput = page.locator('input[name="confirm-password"]');
+
+    // Click generate button
+    await generateButton.click();
+
+    // Password fields should be filled
+    const passwordValue = await passwordInput.inputValue();
+    const confirmValue = await confirmPasswordInput.inputValue();
+
+    expect(passwordValue.length).toBeGreaterThan(0);
+    expect(confirmValue).toBe(passwordValue);
+  });
 });
 ```
 
-### Testing Inertia.js Applications
-
-When testing Inertia.js applications, use text-based selectors for links:
-
-```typescript
-// ❌ Bad - href selector may not work with Inertia
-const link = page.locator('a[href="/login"]');
-
-// ✅ Good - text-based selector works with Inertia
-const link = page.getByText('Sign in').or(page.locator('a[href="/login"]'));
-await expect(link.first()).toBeVisible();
-```
-
-## Best Practices for E2E
+### Best Practices for E2E
 
 1. **Test Critical User Flows**
    - Focus on important user journeys (login, registration, checkout)
@@ -331,42 +437,10 @@ await expect(link.first()).toBeVisible();
    test('test login redirect', () => {});
    ```
 
-5. **Test Real Scenarios**
-   - Use realistic data
-   - Test like a real user would interact
-   - Include edge cases (empty fields, invalid data)
-
-6. **Keep Tests Independent**
+5. **Keep Tests Independent**
    - Each test should work alone
    - Don't rely on state from previous tests
    - Use `beforeEach` to set up fresh state
-
-## Debugging E2E Tests
-
-**Run with UI Mode:**
-```bash
-npm run test:e2e:ui
-```
-
-**Run with Debug Mode:**
-```bash
-npm run test:e2e:debug
-```
-
-**Run Specific Test:**
-```bash
-npx playwright test --grep "should display login form"
-```
-
-**View Test Reports:**
-```bash
-npx playwright show-report
-```
-
-**Screenshots and Videos:**
-- Screenshots are captured automatically on test failure
-- Videos are recorded for failed tests
-- Check `test-results/` directory after test runs
 
 ## Test Utilities
 
@@ -391,7 +465,7 @@ export async function createUser(overrides = {}) {
   };
 
   const user = { ...defaults, ...overrides };
-  await DB.insertInto("users").values(user).execute();
+  await DB.insertInto('users').values(user).execute();
   
   return user;
 }
@@ -408,7 +482,7 @@ export async function createPost(userId: string, overrides = {}) {
   };
 
   const post = { ...defaults, ...overrides };
-  await DB.insertInto("posts").values(post).execute();
+  await DB.insertInto('posts').values(post).execute();
   
   return post;
 }
@@ -424,10 +498,10 @@ describe('Post with User', () => {
     const user = await createUser({ name: 'Author' });
     const post = await createPost(user.id, { title: 'My Post' });
     
-    const result = await DB.selectFrom("posts")
-      .innerJoin("users", "posts.user_id", "users.id")
-      .where("posts.id", "=", post.id)
-      .select(["posts.*", "users.name as author_name"])
+    const result = await DB.selectFrom('posts')
+      .innerJoin('users', 'posts.user_id', 'users.id')
+      .where('posts.id', '=', post.id)
+      .select(['posts.title', 'users.name as author_name'])
       .executeTakeFirst();
     
     expect(result?.author_name).toBe('Author');
@@ -443,7 +517,7 @@ describe('Post with User', () => {
 ```typescript
 // Each test should be independent
 beforeEach(async () => {
-  await DB.deleteFrom("users").execute();
+  await DB.deleteFrom('users').execute();
 });
 ```
 
@@ -487,21 +561,16 @@ it('should update user profile', async () => {
   const user = await createUser({ name: 'Old Name' });
   
   // Act
-  await DB.updateTable("users")
+  await DB.updateTable('users')
     .set({ name: 'New Name' })
-    .where("id", "=", user.id)
+    .where('id', '=', user.id)
     .execute();
   
   // Assert
-  const updated = await DB.selectFrom("users")
+  const updated = await DB.selectFrom('users')
     .selectAll()
-    .where("id", "=", user.id)
+    .where('id', '=', user.id)
     .executeTakeFirst();
   expect(updated?.name).toBe('New Name');
 });
 ```
-
-## Next Steps
-
-- [CI/CD](/guide/cicd) - Run tests in CI/CD pipeline
-- [Controllers](/guide/controllers) - Write testable code

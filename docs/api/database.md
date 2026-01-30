@@ -326,16 +326,6 @@ const usersWithPhone = await DB.selectFrom("users")
   .execute();
 ```
 
-#### BETWEEN
-
-```typescript
-const posts = await DB.selectFrom("posts")
-  .selectAll()
-  .where("created_at", ">=", startDate)
-  .where("created_at", "<=", endDate)
-  .execute();
-```
-
 ### Aggregates
 
 ```typescript
@@ -491,28 +481,7 @@ const users = await DB.selectFrom("users")
   .execute();
 ```
 
-## Database Connections
-
-### Multiple Connections
-
-```typescript
-// Connect to different databases
-const stagingDB = DB.getConnection("staging");
-const productionDB = DB.getConnection("production");
-
-// Use different connections
-const stagingUsers = await stagingDB
-  .selectFrom("users")
-  .selectAll()
-  .execute();
-
-const productionUsers = await productionDB
-  .selectFrom("users")
-  .selectAll()
-  .execute();
-```
-
-### Native SQLite Access
+## Native SQLite Access
 
 For maximum performance on simple queries:
 
@@ -540,153 +509,6 @@ const result = SQLite.run(
 console.log("Inserted ID:", result.lastInsertRowid);
 ```
 
-## Type Definitions
-
-### Database Types
-
-Define your table schemas in `type/db-types.ts`:
-
-```typescript
-import type { Generated, Selectable, Insertable, Updateable } from "kysely";
-
-// Table interface
-export interface UserTable {
-  id: string;
-  name: string | null;
-  email: string;
-  phone: string | null;
-  is_verified: number;
-  is_admin: number;
-  created_at: number;
-  updated_at: number;
-}
-
-// Database interface
-export interface DB {
-  users: UserTable;
-  posts: PostTable;
-  comments: CommentTable;
-}
-
-// Helper types
-export type User = Selectable<UserTable>;
-export type NewUser = Insertable<UserTable>;
-export type UserUpdate = Updateable<UserTable>;
-```
-
-### Using Types
-
-```typescript
-import { User, NewUser } from "../../type/db-types";
-
-// Type-safe user object
-const user: User = await DB.selectFrom("users")
-  .selectAll()
-  .where("id", "=", id)
-  .executeTakeFirst();
-
-// Type-safe insert
-const newUser: NewUser = {
-  id: randomUUID(),
-  name: "John",
-  email: "john@example.com",
-  created_at: Date.now()
-};
-
-await DB.insertInto("users").values(newUser).execute();
-```
-
-## Complete CRUD Example
-
-```typescript
-import { Request, Response } from "../../type";
-import DB from "../services/DB";
-import { randomUUID } from "crypto";
-
-class PostController {
-  // LIST with pagination
-  public async index(request: Request, response: Response) {
-    const page = parseInt(request.query.page || "1");
-    const limit = 20;
-    const offset = (page - 1) * limit;
-    
-    const posts = await DB.selectFrom("posts")
-      .selectAll()
-      .orderBy("created_at", "desc")
-      .limit(limit)
-      .offset(offset)
-      .execute();
-    
-    return response.inertia("posts/index", { posts, page });
-  }
-
-  // CREATE
-  public async store(request: Request, response: Response) {
-    const body = await request.json();
-    
-    const result = await DB.insertInto("posts")
-      .values({
-        id: randomUUID(),
-        title: body.title,
-        content: body.content,
-        user_id: request.user!.id,
-        created_at: Date.now(),
-        updated_at: Date.now()
-      })
-      .executeTakeFirst();
-    
-    return response
-      .flash("success", "Post created!")
-      .redirect("/posts", 303);
-  }
-
-  // READ
-  public async show(request: Request, response: Response) {
-    const post = await DB.selectFrom("posts")
-      .selectAll()
-      .where("id", "=", request.params.id)
-      .executeTakeFirst();
-    
-    if (!post) {
-      return response.status(404).json({ error: "Not found" });
-    }
-    
-    return response.inertia("posts/show", { post });
-  }
-
-  // UPDATE
-  public async update(request: Request, response: Response) {
-    const body = await request.json();
-    
-    await DB.updateTable("posts")
-      .set({
-        title: body.title,
-        content: body.content,
-        updated_at: Date.now()
-      })
-      .where("id", "=", request.params.id)
-      .execute();
-    
-    return response
-      .flash("success", "Post updated!")
-      .redirect("/posts", 303);
-  }
-
-  // DELETE
-  public async destroy(request: Request, response: Response) {
-    await DB.deleteFrom("posts")
-      .where("id", "=", request.params.id)
-      .execute();
-    
-    return response
-      .flash("success", "Post deleted!")
-      .redirect("/posts", 303);
-  }
-}
-
-export default new PostController();
-```
-
 ## Best Practices
 
 1. **Use type-safe queries** - Define interfaces for your tables
@@ -699,6 +521,5 @@ export default new PostController();
 
 ## Related
 
+- [Database Guide](/guide/database) - Complete database guide
 - [Services API](./services) - Other built-in services
-- [Request API](./request) - Request handling
-- [Response API](./response) - Response methods

@@ -1,5 +1,4 @@
 import { defineConfig } from 'vitepress'
-import { MermaidMarkdown, MermaidPlugin } from 'vitepress-plugin-mermaid'
 
 export default defineConfig({
   lang: 'en-US',
@@ -21,16 +20,32 @@ export default defineConfig({
     ['meta', { name: 'og:type', content: 'website' }],
     ['meta', { name: 'og:locale', content: 'en' }],
     ['meta', { name: 'og:site_name', content: 'Laju Framework' }],
+    ['script', { src: 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js' }],
+    ['script', {}, `
+      document.addEventListener('DOMContentLoaded', function() {
+        if (typeof mermaid !== 'undefined') {
+          mermaid.initialize({
+            startOnLoad: true,
+            theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default'
+          });
+        }
+      });
+    `]
   ],
 
   markdown: {
     config: (md) => {
-      md.use(MermaidMarkdown)
+      const fence = md.renderer.rules.fence
+      if (fence) {
+        md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+          const token = tokens[idx]
+          if (token.info.trim() === 'mermaid') {
+            return `<div class="mermaid">${token.content}</div>`
+          }
+          return fence(tokens, idx, options, env, self)
+        }
+      }
     }
-  },
-  
-  vite: {
-    plugins: [MermaidPlugin()]
   },
 
   themeConfig: {

@@ -4,24 +4,28 @@ Complete guide for caching strategies in Laju framework.
 
 ## Overview
 
-Laju provides in-memory caching using JavaScript Map with TTL (Time To Live):
+Laju provides two caching options:
+
+| Option | Storage | Setup | Use Case |
+|--------|---------|-------|----------|
+| **In-Memory Cache** | JavaScript Map | Zero config | High-frequency data, single server |
+| **Redis Cache** | Redis | Requires Redis server | Distributed systems, persistence |
+
+**Default:** In-Memory Cache (no additional setup required)
+
+## In-Memory Cache (Recommended)
+
+Laju provides a high-performance **in-memory cache** using JavaScript Map with TTL (Time To Live).
+
+### Why In-Memory?
 
 | Storage | Latency | Best For |
 |---------|---------|----------|
 | **In-Memory (Map)** | ~0.001ms | High-frequency cache, session data, config |
 | **Redis** | ~0.1-1ms | Distributed cache, persistence needed |
-| **SQLite** | ~1-5ms | ❌ Too slow for cache use case |
+| **SQLite** | ~1-5ms | Too slow for cache use case |
 
 **Performance improvement: 1000x+ faster than SQLite-based cache**
-
-## In-Memory Cache (Default) - Recommended
-
-### Why In-Memory?
-
-- **Fastest** option (~0.001ms per operation)
-- **Zero configuration** - works out of the box
-- **No additional server/service needed**
-- **Perfect for small-medium traffic**
 
 ### Usage
 
@@ -86,7 +90,7 @@ Cache.cleanup(): number         // Remove expired entries
 ❌ **Don't Use For:**
 - Critical data that must survive restart
 - Multi-server setups (use Redis instead)
-- Very large datasets
+- Very large datasets (use Redis instead)
 
 ### Example: Cache User Data
 
@@ -152,7 +156,7 @@ const user = cached ? JSON.parse(cached) : null;
 // Delete cache
 await Redis.del("user:123");
 
-// Check exists
+// Check exists (returns 1 if exists, 0 if not)
 const exists = await Redis.exists("user:123");
 if (exists === 1) {
   // key exists
@@ -197,11 +201,11 @@ async function getUser(id: string) {
 const stats = await Cache.remember("dashboard:stats", 5, async () => {
   return await DB.selectFrom("users")
     .leftJoin("orders", "users.id", "orders.user_id")
-    .select((eb) => [
-      eb.fn.countAll().as("total_users"),
-      eb.fn.sum("orders.total").as("revenue")
+    .select(({ fn }) => [
+      fn.count("users.id").as("total_users"),
+      fn.sum("orders.total").as("revenue")
     ])
-    .executeTakeFirst();
+    .execute();
 });
 ```
 
@@ -223,19 +227,6 @@ const report = await Cache.remember("report:monthly", 1440, async () => {
     .where("month", "=", currentMonth)
     .execute();
   return processReport(data); // Expensive computation
-});
-```
-
-**4. Frequently Accessed Data**
-```typescript
-// Cache hot data
-const popularPosts = await Cache.remember("posts:popular", 60, async () => {
-  return await DB.selectFrom("posts")
-    .selectAll()
-    .where("views", ">", 1000)
-    .orderBy("views", "desc")
-    .limit(10)
-    .execute();
 });
 ```
 
@@ -347,5 +338,5 @@ async function getUser(id: string) {
 
 ## Next Steps
 
-- [Database](/guide/database) - Optimize database queries
-- [Caching](/guide/caching) - More performance tips
+- [Database](/guide/database) - Database operations
+- [Performance](/guide/performance) - Performance optimization

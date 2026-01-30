@@ -17,7 +17,9 @@
   "author": "Maulana Shalihin",
   "license": "MIT",
   "devDependencies": {
-    "vitepress": "^1.0.0",
-    "vitepress-plugin-mermaid": "^2.0.17"
+    "vitepress": "^1.0.0"
+  },
+  "dependencies": {
+    "mermaid": "^11.12.2"
   }
 }
