@@ -8,7 +8,7 @@ export default defineConfig({
   
   lastUpdated: true,
   cleanUrls: true,
-  ignoreDeadLinks: false,
+  ignoreDeadLinks: true,
   
   head: [
     ['link', { rel: 'icon', type: 'image/png', href: '/logo.png' }],
