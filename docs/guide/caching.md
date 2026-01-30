@@ -348,4 +348,4 @@ async function getUser(id: string) {
 ## Next Steps
 
 - [Database](/guide/database) - Optimize database queries
-- [Performance](/reference/performance) - More performance tips
+- [Caching](/guide/caching) - More performance tips
