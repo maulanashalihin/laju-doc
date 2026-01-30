@@ -8,7 +8,11 @@ export default defineConfig({
   
   lastUpdated: true,
   cleanUrls: true,
-  ignoreDeadLinks: true,
+  ignoreDeadLinks: [
+    /^\/guide\//,
+    /^\/api\//,
+    /^\/examples\//
+  ],
   
   head: [
     ['link', { rel: 'icon', type: 'image/png', href: '/logo.png' }],
