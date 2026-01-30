@@ -20,6 +20,7 @@
     "vitepress": "^1.0.0"
   },
   "dependencies": {
-    "mermaid": "^11.12.2"
+    "mermaid": "^11.12.2",
+    "vitepress-plugin-mermaid": "^2.0.17"
   }
 }
