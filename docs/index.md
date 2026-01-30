@@ -88,6 +88,17 @@ Visit `http://localhost:5555` — your app is running!
 | Testing | ❌ Manual config | ✅ Vitest + Playwright |
 | Performance | 22k req/s | 258k req/s |
 
+### Compare with Laravel
+
+| Feature | Laravel | Laju |
+|---------|---------|------|
+| Language | PHP | TypeScript |
+| Performance | 80 req/s | 258k req/s |
+| Frontend | ⚠️ Blade/Inertia separate | ✅ Svelte 5 + Inertia built-in |
+| Auth Setup | ⚠️ Manual config | ✅ Pre-configured |
+| Type Safety | ❌ Runtime only | ✅ Compile-time |
+| Async/Performance | ⚠️ Blocking I/O | ✅ Non-blocking |
+
 ### Compare with Next.js
 
 | Feature | Next.js | Laju |
