@@ -8,10 +8,16 @@
     "build": "vitepress build docs",
     "preview": "vitepress preview docs"
   },
-  "keywords": ["laju", "framework", "documentation", "vitepress"],
+  "keywords": [
+    "laju",
+    "framework",
+    "documentation",
+    "vitepress"
+  ],
   "author": "Maulana Shalihin",
   "license": "MIT",
   "devDependencies": {
-    "vitepress": "^1.0.0"
+    "vitepress": "^1.0.0",
+    "vitepress-plugin-mermaid": "^2.0.17"
   }
 }

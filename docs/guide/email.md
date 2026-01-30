@@ -171,33 +171,6 @@ The Laju Team
 });
 ```
 
-### Order Confirmation
-
-```typescript
-const orderDetails = items.map(item => 
-  `${item.name} - $${item.price}`
-).join('\n');
-
-await MailTo({
-  to: user.email,
-  subject: `Order Confirmation #${orderId}`,
-  text: `
-Hi ${user.name},
-
-Your order has been confirmed!
-
-Order #${orderId}
-${orderDetails}
-
-Total: $${total}
-
-Track your order: ${process.env.APP_URL}/orders/${orderId}
-
-Thank you for your purchase!
-  `.trim()
-});
-```
-
 ## Best Practices
 
 ### 1. Use Environment Variables
@@ -225,7 +198,40 @@ try {
 }
 ```
 
-### 3. Rate Limit Email Sending
+### 3. Use Queues for Bulk Emails
+
+```typescript
+// For sending many emails, use a queue
+import Bull from 'bull';
+
+const emailQueue = new Bull('email');
+
+emailQueue.process(async (job) => {
+  await MailTo(job.data);
+});
+
+// Add to queue
+await emailQueue.add({
+  to: user.email,
+  subject: "Newsletter",
+  text: "Content..."
+});
+```
+
+### 4. Validate Email Addresses
+
+```typescript
+function isValidEmail(email: string): boolean {
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(email);
+}
+
+if (!isValidEmail(email)) {
+  return response.status(400).json({ error: "Invalid email" });
+}
+```
+
+### 5. Rate Limit Email Sending
 
 ```typescript
 import { passwordResetRateLimit } from "../app/middlewares/rateLimit";
@@ -233,7 +239,7 @@ import { passwordResetRateLimit } from "../app/middlewares/rateLimit";
 Route.post("/forgot-password", [passwordResetRateLimit], PasswordController.sendReset);
 ```
 
-### 4. Use Plain Text
+### 6. Use Plain Text
 
 For better deliverability, use plain text emails. HTML emails are more likely to be marked as spam.
 
@@ -245,7 +251,7 @@ text: "Click here: https://example.com/verify"
 html: "<a href='https://example.com/verify'>Click here</a>"
 ```
 
-### 5. Test Email Sending
+### 7. Test Email Sending
 
 ```typescript
 // Test in development
@@ -259,5 +265,5 @@ await MailTo({ to, subject, text });
 
 ## Next Steps
 
-- [Authentication](/guide/authentication) - Password reset & verification
-- [Controllers](/guide/controllers) - Send emails from controllers
+- [Storage](/guide/storage) - File uploads
+- [Authentication](/guide/authentication) - User authentication

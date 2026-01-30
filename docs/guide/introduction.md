@@ -49,6 +49,42 @@ Laju follows these principles:
 
 ## Architecture
 
+```mermaid
+graph TB
+    Client[Browser]
+    Inertia[Inertia.js]
+    Svelte[Svelte 5]
+    
+    subgraph "Laju Framework"
+        Hyper[HyperExpress]
+        Router[Router]
+        Middleware[Middleware]
+        Controller[Controllers]
+        
+        subgraph "Services"
+            DB[(SQLite + Kysely)]
+            Auth[Authentication]
+            Storage[File Storage]
+            Email[Email Service]
+            Cache[Cache]
+        end
+    end
+    
+    Client -->|HTTP| Hyper
+    Hyper --> Router
+    Router --> Middleware
+    Middleware --> Controller
+    Controller --> DB
+    Controller --> Auth
+    Controller --> Storage
+    Controller --> Email
+    Controller --> Cache
+    
+    Controller -->|Inertia Response| Inertia
+    Inertia --> Svelte
+    Svelte --> Client
+```
+
 ```
 ┌─────────────────────────────────────────┐
 │           CLIENT (Browser)              │

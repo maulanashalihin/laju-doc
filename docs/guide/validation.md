@@ -48,6 +48,8 @@ export const updatePostSchema = createPostSchema.partial();
 // app/controllers/PostController.ts
 import Validator from "../services/Validator";
 import { createPostSchema } from "../validators/PostValidator";
+import { Response, Request } from "../../type";
+import DB from "../services/DB";
 
 class PostController {
   public async store(request: Request, response: Response) {
@@ -64,14 +66,14 @@ class PostController {
     if (!validatedData) return;
 
     // validatedData is now type-safe!
-    const result = await DB.insertInto("posts").values({
+    const post = await DB.insertInto("posts").values({
       title: validatedData.title,
       content: validatedData.content,
       published: validatedData.published ?? false,
       user_id: request.user.id,
     }).execute();
 
-    return response.json({ success: true, data: result });
+    return response.json({ success: true, data: post });
   }
 }
 
@@ -94,13 +96,12 @@ if (result.success) {
 }
 ```
 
-### `validateOrFail(schema, data, response)`
+### `validateOrThrow(schema, data)`
 
-Validate and automatically send error response if validation fails.
+Validate and throw ZodError if validation fails.
 
 ```typescript
-const validated = Validator.validateOrFail(schema, body, response);
-if (!validated) return; // Validation failed, response already sent
+const data = Validator.validateOrThrow(schema, body);
 ```
 
 ## Validation in Controllers
@@ -150,6 +151,9 @@ Use `validate()` and handle JSON response in controller:
 
 ```typescript
 // app/controllers/ApiController.ts
+import Validator from "../services/Validator";
+import { createPostSchema } from "../validators/PostValidator";
+
 class ApiController {
   public async createPost(request: Request, response: Response) {
     const body = await request.json();
@@ -168,13 +172,13 @@ class ApiController {
     const { title, content } = validationResult.data!;
 
     // Create post
-    const result = await DB.insertInto("posts").values({
+    const post = await DB.insertInto("posts").values({
       title,
       content,
       user_id: request.user.id,
     }).execute();
 
-    return response.json({ success: true, data: result });
+    return response.json({ success: true, data: post });
   }
 }
 ```
@@ -290,9 +294,11 @@ export const loginSchema = z.object({
 
 ```typescript
 // app/validators/AuthValidator.ts
+import { field } from './CommonValidator';
+
 export const registerSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email address'),
+  name: field.name,
+  email: field.email,
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 ```
@@ -300,6 +306,7 @@ export const registerSchema = z.object({
 ### File Upload Validation
 
 ```typescript
+// app/validators/CommonValidator.ts
 export function fileUploadSchema(options?: {
   maxSize?: number;
   allowedTypes?: string[];
@@ -399,7 +406,58 @@ const schema = z.object({
 });
 ```
 
-### 4. TypeScript Type Inference
+### 4. Environment-based Validation
+
+```typescript
+const isDev = process.env.NODE_ENV === 'development';
+
+const schema = z.object({
+  password: isDev 
+    ? z.string().min(1) // Lenient in dev
+    : z.string().min(8).regex(/[0-9]/), // Strict in prod
+});
+```
+
+## Integration with Frontend
+
+### Svelte Form Example
+
+```svelte
+<script>
+  import { router } from '@inertiajs/svelte';
+  
+  let form = $state({
+    email: '',
+    password: '',
+  });
+  
+  let errors = $state({});
+
+  function submit() {
+    router.post('/login', form, {
+      onError: (err) => {
+        errors = err; // Zod validation errors
+      },
+    });
+  }
+</script>
+
+<form onsubmit={submit}>
+  <input bind:value={form.email} />
+  {#if errors.email}
+    <p class="error">{errors.email[0]}</p>
+  {/if}
+  
+  <input type="password" bind:value={form.password} />
+  {#if errors.password}
+    <p class="error">{errors.password[0]}</p>
+  {/if}
+  
+  <button type="submit">Login</button>
+</form>
+```
+
+## TypeScript Type Inference
 
 Zod automatically generates TypeScript types:
 
@@ -422,14 +480,20 @@ function createUser(data: User) {
 }
 ```
 
+## Existing Validators
+
+Laju already provides validators for existing controllers:
+
+| File | Schemas | Used By |
+|------|---------|--------|
+| `AuthValidator.ts` | `loginSchema`, `registerSchema`, `forgotPasswordSchema`, `resetPasswordSchema`, `changePasswordSchema` | LoginController, RegisterController, PasswordController |
+| `ProfileValidator.ts` | `updateProfileSchema`, `deleteUsersSchema` | ProfileController |
+| `S3Validator.ts` | `signedUrlSchema` | S3Controller |
+| `CommonValidator.ts` | `field.*` (reusable fields) | All validators |
+
 ## Resources
 
 - **Zod Documentation**: [zod.dev](https://zod.dev)
 - **Validator Service**: `app/services/Validator.ts`
 - **Common Fields**: `app/validators/CommonValidator.ts`
 - **Auth Validators**: `app/validators/AuthValidator.ts`
-
-## Next Steps
-
-- [Forms](/guide/forms) - Build forms with validation
-- [Controllers](/guide/controllers) - Handle validation in controllers

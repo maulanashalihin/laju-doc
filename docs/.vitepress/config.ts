@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import { MermaidMarkdown, MermaidPlugin } from 'vitepress-plugin-mermaid'
 
 export default defineConfig({
   lang: 'en-US',
@@ -21,6 +22,16 @@ export default defineConfig({
     ['meta', { name: 'og:locale', content: 'en' }],
     ['meta', { name: 'og:site_name', content: 'Laju Framework' }],
   ],
+
+  markdown: {
+    config: (md) => {
+      md.use(MermaidMarkdown)
+    }
+  },
+  
+  vite: {
+    plugins: [MermaidPlugin()]
+  },
 
   themeConfig: {
     logo: '/logo.png',

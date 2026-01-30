@@ -122,6 +122,9 @@ public async processLogin(request: Request, response: Response) {
 
 ```typescript
 // app/middlewares/auth.ts
+import SQLite from "../services/SQLite";
+import { Request, Response } from "../../type";
+
 export default async (request: Request, response: Response) => {
   if (request.cookies.auth_id) {
     // Validate session and load user
@@ -138,6 +141,7 @@ export default async (request: Request, response: Response) => {
       user.is_verified = !!user.is_verified;
       
       request.user = user;
+      // No return = continue to handler
     } else {
       return response.cookie("auth_id", "", 0).redirect("/login");
     }
@@ -207,6 +211,8 @@ User is automatically passed to all Inertia pages:
 
 ```typescript
 // migrations/20230514062913_sessions.ts
+import { Kysely } from "kysely";
+
 export async function up(db: Kysely<any>): Promise<void> {
   await db.schema
     .createTable('sessions')
@@ -382,9 +388,7 @@ public async resetPassword(request: Request, response: Response) {
     .where("id", "=", user.id)
     .execute();
 
-  await DB.deleteFrom("password_reset_tokens")
-    .where("token", "=", id)
-    .execute();
+  await DB.deleteFrom("password_reset_tokens").where("token", "=", id).execute();
 
   return Authenticate.process(user, request, response);
 }
@@ -461,6 +465,5 @@ public async verifyPage(request: Request, response: Response) {
 
 ## Next Steps
 
-- [Validation](/guide/validation) - Validate user input
-- [Email](/guide/email) - Send emails for verification
-- [Middleware](/guide/middleware) - Protect routes
+- [Storage](/guide/storage) - File uploads
+- [Email](/guide/email) - Email services

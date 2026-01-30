@@ -4,7 +4,7 @@ Complete guide to understanding and creating middleware in Laju Framework.
 
 ## Introduction
 
-Middleware functions have access to the request and response objects. They can execute code, modify request/response objects, and control the flow of the request-response cycle.
+Middleware functions are functions that have access to the request and response objects. They can execute code, modify request/response objects, and control the flow of the request-response cycle.
 
 ### What Middleware Can Do
 
@@ -19,7 +19,7 @@ Middleware functions have access to the request and response objects. They can e
 
 ## HyperExpress vs Express.js
 
-### CRITICAL DIFFERENCE
+### ⚠️ CRITICAL DIFFERENCE
 
 **HyperExpress supports TWO middleware patterns:**
 
@@ -78,26 +78,34 @@ export default async (request: Request, response: Response) => {
 }
 ```
 
-### IMPORTANT
+## Middleware Execution Flow
 
-**ALWAYS use `async` for middleware in Laju Framework:**
+### Route Definition
 
 ```typescript
-// ✅ CORRECT - Async middleware
-export function securityHeaders() {
-  return async (request: Request, response: Response) => {
-    response.header('X-Frame-Options', 'DENY');
-    // Automatically continues
-  };
-}
+// Single middleware
+Route.get("/profile", [Auth], ProfileController.show);
 
-// ❌ WRONG - Non-async without next
-export function securityHeaders() {
-  return (request: Request, response: Response) => {
-    response.header('X-Frame-Options', 'DENY');
-    // Request will hang - no way to continue!
-  };
-}
+// Multiple middleware (executed in order)
+Route.post("/upload", [Auth, uploadRateLimit, validateFile], UploadController.store);
+```
+
+### Execution Order
+
+```typescript
+Route.post("/posts", [middleware1, middleware2, middleware3], Controller.store);
+
+// Flow:
+// 1. middleware1 executes
+//    - If returns response → STOP
+//    - If no return → continue to #2
+// 2. middleware2 executes
+//    - If returns response → STOP
+//    - If no return → continue to #3
+// 3. middleware3 executes
+//    - If returns response → STOP
+//    - If no return → continue to Controller.store
+// 4. Controller.store executes
 ```
 
 ## Built-in Middleware
@@ -116,11 +124,6 @@ Route.get("/dashboard", [Auth], DashboardController.index);
 Route.get("/profile", [Auth], ProfileController.show);
 Route.post("/profile", [Auth], ProfileController.update);
 ```
-
-**Features:**
-- ✅ Session caching (60 days) for performance
-- ✅ Session expiration check
-- ✅ Error handling with fallback to login
 
 ### 2. CSRF Middleware
 
@@ -157,6 +160,23 @@ Route.post("/register", [createAccountRateLimit], AuthController.processRegister
 Route.post("/api/upload", [Auth, uploadRateLimit], UploadController.store);
 ```
 
+#### Custom Rate Limiter
+
+```typescript
+import { rateLimit } from "app/middlewares/rateLimit";
+
+const customLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,  // 1 hour
+  maxRequests: 100,           // 100 requests
+  message: "Too many requests",
+  statusCode: 429,
+  keyGenerator: (request) => request.ip,  // Rate limit by IP
+  skip: (request) => request.user?.is_admin  // Skip for admins
+});
+
+Route.post("/api/data", [customLimit], DataController.store);
+```
+
 ### 4. Security Headers Middleware
 
 Adds security-related HTTP headers to all responses.
@@ -164,15 +184,9 @@ Adds security-related HTTP headers to all responses.
 ```typescript
 import { securityHeaders } from "app/middlewares/securityHeaders";
 
-// Applied globally in server.ts
+// Apply globally in server.ts
 webserver.use(securityHeaders());
 ```
-
-**Features:**
-- ✅ XSS protection
-- ✅ Clickjacking protection
-- ✅ MIME type sniffing protection
-- ✅ Configurable CSP (Content Security Policy)
 
 ### 5. Inertia Middleware
 
@@ -185,8 +199,8 @@ import inertia from "app/middlewares/inertia";
 webserver.use(inertia());
 
 // Now you can use response.inertia() in controllers
-public async index(request: Request, response: Response) => {
-  const posts = await DB.from("posts");
+public async index(request: Request, response: Response) {
+  const posts = await DB.selectFrom("posts").selectAll().execute();
   return response.inertia("posts/index", { posts });
 }
 ```
@@ -230,6 +244,18 @@ export default async (request: Request, response: Response) => {
   // Continue to next handler
   request.startTime = startTime;
 }
+```
+
+**Usage:**
+
+```typescript
+import requestLogger from "../app/middlewares/requestLogger";
+
+// Apply to specific routes
+Route.get("/api/data", [requestLogger], DataController.index);
+
+// Or globally
+webserver.use(requestLogger);
 ```
 
 ### Example 2: API Key Validation
@@ -281,6 +307,17 @@ export default async (request: Request, response: Response) => {
 }
 ```
 
+**Usage:**
+
+```typescript
+import Auth from "../app/middlewares/auth";
+import requireAdmin from "../app/middlewares/requireAdmin";
+
+// Both middleware must pass
+Route.get("/admin/users", [Auth, requireAdmin], AdminController.users);
+Route.delete("/admin/users/:id", [Auth, requireAdmin], AdminController.deleteUser);
+```
+
 ### Example 4: CORS Middleware
 
 ```typescript
@@ -308,28 +345,240 @@ export default async (request: Request, response: Response) => {
 }
 ```
 
-## Using Middleware in Routes
+## Common Patterns
+
+### Pattern 1: Conditional Middleware
 
 ```typescript
-// Single middleware
-Route.get("/profile", [Auth], ProfileController.show);
+// app/middlewares/conditionalAuth.ts
+import { Request, Response } from "../../type";
+import SQLite from "../services/SQLite";
 
-// Multiple middleware (executed in order)
-Route.post("/upload", [Auth, uploadRateLimit, validateFile], UploadController.store);
+export default async (request: Request, response: Response) => {
+  // Only check auth for non-public routes
+  const publicRoutes = ['/login', '/register', '/'];
+  
+  if (publicRoutes.includes(request.path)) {
+    return; // Skip auth check
+  }
+  
+  // Check authentication for other routes
+  if (!request.cookies.auth_id) {
+    return response.redirect("/login");
+  }
+  
+  const user = SQLite.get("SELECT * FROM users WHERE id = ?", [request.cookies.auth_id]);
+  
+  if (!user) {
+    return response.redirect("/login");
+  }
+  
+  request.user = user;
+}
+```
 
-// Global middleware (applies to all routes)
-webserver.use(securityHeaders());
+### Pattern 2: Middleware Factory
+
+```typescript
+// app/middlewares/requireRole.ts
+import { Request, Response } from "../../type";
+
+export function requireRole(role: string) {
+  return async (request: Request, response: Response) => {
+    if (!request.user) {
+      return response.status(401).json({ error: "Unauthorized" });
+    }
+    
+    if (request.user.role !== role) {
+      return response.status(403).json({ 
+        error: `${role} access required` 
+      });
+    }
+    
+    // User has required role
+  };
+}
+
+// Usage
+import { requireRole } from "../app/middlewares/requireRole";
+
+Route.get("/admin/dashboard", [Auth, requireRole('admin')], AdminController.dashboard);
+Route.get("/moderator/reports", [Auth, requireRole('moderator')], ModeratorController.reports);
+```
+
+### Pattern 3: Async Data Loading
+
+```typescript
+// app/middlewares/loadPost.ts
+import { Request, Response } from "../../type";
+import DB from "../services/DB";
+
+export default async (request: Request, response: Response) => {
+  const { id } = request.params;
+  
+  const post = await DB.selectFrom("posts")
+    .selectAll()
+    .where("id", "=", id)
+    .executeTakeFirst();
+  
+  if (!post) {
+    return response.status(404).json({ error: "Post not found" });
+  }
+  
+  // Attach to request
+  request.post = post;
+  
+  // Continue to handler
+}
+
+// Usage in controller
+public async show(request: Request, response: Response) {
+  // Post already loaded by middleware
+  return response.json({ post: request.post });
+}
+```
+
+## Error Handling
+
+### Try-Catch in Middleware
+
+```typescript
+// app/middlewares/safeMiddleware.ts
+import { Request, Response } from "../../type";
+import { logError } from "../services/Logger";
+
+export default async (request: Request, response: Response) => {
+  try {
+    // Your middleware logic
+    const data = await someAsyncOperation();
+    request.data = data;
+    
+  } catch (error) {
+    logError("Middleware error", { 
+      error: error.message,
+      stack: error.stack,
+      url: request.url
+    });
+    
+    return response.status(500).json({ 
+      error: "Internal server error" 
+    });
+  }
+}
+```
+
+### Global Error Handler
+
+```typescript
+// server.ts
+webserver.set_error_handler((request, response, error) => {
+  logError("Unhandled error", {
+    error: error.message,
+    stack: error.stack,
+    url: request.url,
+    method: request.method
+  });
+  
+  // Don't expose internal errors in production
+  const message = process.env.NODE_ENV === 'production'
+    ? 'Internal server error'
+    : error.message;
+  
+  return response.status(500).json({ error: message });
+});
 ```
 
 ## Best Practices
 
-1. **Always use async pattern** - Prevents request hanging
-2. **Use early returns** - For stopping execution
-3. **Keep middleware focused** - One responsibility per middleware
-4. **Order matters** - Middleware executes left to right
-5. **Document behavior** - Explain what the middleware does
+### ✅ DO
 
-## Next Steps
+**1. Keep middleware focused**
+```typescript
+// ✅ Good - Single responsibility
+export default async (request: Request, response: Response) => {
+  if (!request.user) {
+    return response.redirect("/login");
+  }
+}
+```
 
-- [Controllers](/guide/controllers) - Handle requests after middleware
-- [Authentication](/guide/authentication) - Learn more about auth
+**2. Use descriptive names**
+```typescript
+// ✅ Good
+import requireAdmin from "../app/middlewares/requireAdmin";
+import validatePost from "../app/middlewares/validatePost";
+```
+
+**3. Order middleware correctly**
+```typescript
+// ✅ Good - Auth before authorization
+Route.post("/admin/users", [Auth, requireAdmin], AdminController.createUser);
+
+// ✅ Good - Validation before processing
+Route.post("/posts", [Auth, validatePost, uploadRateLimit], PostController.store);
+```
+
+**4. Return response to stop execution**
+```typescript
+// ✅ Good
+if (!isValid) {
+  return response.status(400).json({ error: "Invalid" });
+}
+```
+
+### ❌ DON'T
+
+**1. Don't use next()**
+```typescript
+// ❌ Bad - HyperExpress doesn't have next()
+export default async (request, response, next) => {
+  console.log("Middleware");
+  next(); // ❌ This doesn't exist
+}
+```
+
+**2. Don't forget to return when stopping**
+```typescript
+// ❌ Bad - Missing return
+if (!request.user) {
+  response.redirect("/login"); // ❌ Will continue execution!
+}
+
+// ✅ Good
+if (!request.user) {
+  return response.redirect("/login");
+}
+```
+
+## Summary
+
+### Key Takeaways
+
+1. **No `next()` function** - Return response to stop, no return to continue
+2. **Order matters** - Middleware executes in array order
+3. **Return to stop** - Always return when sending response
+4. **Keep focused** - One responsibility per middleware
+5. **Use built-in** - Auth, CSRF, rate limiting, Inertia, security headers already available
+
+### Quick Reference
+
+```typescript
+// Continue to next handler
+export default async (request: Request, response: Response) => {
+  request.data = "value";
+  // No return
+}
+
+// Stop and send response
+export default async (request: Request, response: Response) => {
+  return response.json({ error: "Error" });
+}
+
+// Conditional execution
+export default async (request: Request, response: Response) => {
+  if (condition) {
+    return response.redirect("/login");
+  }
+  // Continues if condition is false
+}
+```
