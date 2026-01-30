@@ -2,6 +2,16 @@
 
 Learn how to define routes in Laju Framework.
 
+## Introduction
+
+Routes define how your application responds to HTTP requests.
+
+### Request Flow
+
+```
+HTTP Request → Route → Middleware → Controller → Response
+```
+
 ## Basic Routing
 
 Routes are defined in `routes/web.ts`:
@@ -45,7 +55,10 @@ Route.get("/posts/:postId/comments/:commentId", CommentController.show);
 // Controller
 public async show(request: Request, response: Response) {
   const { id } = request.params;
-  const user = await DB.from("users").where("id", id).first();
+  const user = await DB.selectFrom("users")
+    .selectAll()
+    .where("id", "=", id)
+    .executeTakeFirst();
   return response.json({ user });
 }
 ```
@@ -58,10 +71,12 @@ public async show(request: Request, response: Response) {
 public async search(request: Request, response: Response) {
   const { q, page } = request.query;
   
-  const results = await DB.from("posts")
+  const results = await DB.selectFrom("posts")
+    .selectAll()
     .where("title", "like", `%${q}%`)
     .limit(10)
-    .offset((page - 1) * 10);
+    .offset((page - 1) * 10)
+    .execute();
   
   return response.json({ results });
 }
@@ -98,20 +113,6 @@ Route.get("/posts/:id", PostController.show);        // Show
 Route.get("/posts/:id/edit", PostController.edit);   // Edit form
 Route.put("/posts/:id", PostController.update);      // Update
 Route.delete("/posts/:id", PostController.destroy);  // Delete
-```
-
-## Route Groups
-
-```typescript
-// All routes in group will use Auth middleware
-const apiRoutes = () => {
-  Route.get("/users", UserController.index);
-  Route.get("/posts", PostController.index);
-  Route.post("/posts", PostController.store);
-};
-
-// Apply middleware to group
-Route.group("/api", [Auth], apiRoutes);
 ```
 
 ## Next Steps

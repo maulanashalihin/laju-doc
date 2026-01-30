@@ -227,6 +227,13 @@ const users = await DB.selectFrom("users")
   .execute();
 ```
 
+### Multiple Connections
+
+```typescript
+const stagingDB = DB.connection("staging");
+const users = await stagingDB.selectFrom("users").selectAll().execute();
+```
+
 ## SQLite Service (Native)
 
 Direct better-sqlite3 access for maximum performance.

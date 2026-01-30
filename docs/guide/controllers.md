@@ -1,6 +1,6 @@
 # Controllers
 
-Controllers handle the business logic for each route in Laju Framework.
+Learn how to create controllers in Laju Framework.
 
 ## Creating a Controller
 
@@ -103,18 +103,20 @@ class PostController {
 export default new PostController();
 ```
 
-## Controller Organization & Method Calls
+## Controller Organization
 
-**CRITICAL:** Laju exports controller **instances**, not classes. This affects how you organize controller code.
+### ⚠️ CRITICAL: Don't Use `this`
 
-### DON'T: Use `this` for internal methods
+**Laju exports controller instances, not classes.** This affects how you organize controller code.
+
+#### ❌ DON'T: Use `this` for internal methods
 
 ```typescript
 // ❌ WRONG - this.method() doesn't work
 class UserController {
   public async store(request: Request, response: Response) {
     const body = await request.json();
-    const validated = this.validateUser(body);  // This will fail!
+    const validated = this.validateUser(body); // This will fail!
     await DB.insertInto("users").values(validated).execute();
     return response.json({ success: true });
   }
@@ -127,7 +129,7 @@ class UserController {
 export default new UserController();
 ```
 
-### DO: Use Static Methods
+#### ✅ DO: Use Static Methods
 
 ```typescript
 // ✅ CORRECT - Use static methods
@@ -147,7 +149,7 @@ class UserController {
 export default new UserController();
 ```
 
-### DO: Use Separate Utility Functions
+#### ✅ DO: Use Separate Utility Functions
 
 ```typescript
 // ✅ ALSO CORRECT - Extract to utility function
@@ -165,7 +167,37 @@ class UserController {
 export default new UserController();
 ```
 
-## Request Methods
+#### Service Layer Pattern
+
+```typescript
+// app/services/UserService.ts
+class UserService {
+  async create(data: any) {
+    const hashedPassword = await Authenticate.hash(data.password);
+    const user = { ...data, password: hashedPassword };
+    return await DB.insertInto("users").values(user).execute();
+  }
+}
+
+export default new UserService();
+
+// In controller
+import UserService from "../services/UserService";
+
+class UserController {
+  public async store(request: Request, response: Response) {
+    const body = await request.json();
+    const user = await UserService.create(body);
+    return response.json({ user });
+  }
+}
+
+export default new UserController();
+```
+
+## Request & Response
+
+### Request Methods
 
 ```typescript
 public async store(request: Request, response: Response) {
@@ -192,7 +224,7 @@ public async store(request: Request, response: Response) {
 }
 ```
 
-## Response Methods
+### Response Methods
 
 ```typescript
 // JSON response
@@ -217,7 +249,7 @@ return response.cookie("name", "value", 3600).json({ success: true });
 return response.setHeader("X-Custom", "value").json({ data });
 ```
 
-## HTTP Redirect Status Codes
+### HTTP Redirect Status Codes
 
 ```typescript
 // Default 302 (Found) - for GET requests
@@ -228,12 +260,9 @@ return response.redirect("/profile", 303);
 
 // 301 (Moved Permanently) - for permanent redirects
 return response.redirect("/new-path", 301);
-
-// 307 (Temporary Redirect) - for method preservation
-return response.redirect("/submit", 307);
 ```
 
-**⚠️ IMPORTANT**: Always use 303 for form submissions (POST, PUT, PATCH):
+**⚠️ IMPORTANT**: Always use 303 for form submissions:
 
 ```typescript
 // ✅ CORRECT - Use 303 for form updates
@@ -243,7 +272,7 @@ public async update(request: Request, response: Response) {
   const validationResult = Validator.validate(updateSchema, body);
   if (!validationResult.success) {
     const errors = validationResult.errors || {};
-    const firstError = Object.values(errors)[0]?.[0] || 'Terjadi kesalahan validasi';
+    const firstError = Object.values(errors)[0]?.[0] || 'Validation error';
     return response.flash("error", firstError).redirect("/profile", 303);
   }
   
@@ -258,9 +287,11 @@ public async update(request: Request, response: Response) {
 }
 ```
 
-## Flash Messages & Error Handling
+## Flash Messages
 
-Flash messages allow you to send temporary messages to the next request via cookies:
+Flash messages allow you to send temporary messages to the next request via cookies.
+
+### Usage in Controller
 
 ```typescript
 // Send error message
@@ -272,14 +303,9 @@ return response
 return response
    .flash("success", "Registration successful!")
    .redirect("/login");
-
-// Chain with other methods
-return response
-   .flash("error", "Wrong password")
-   .redirect("/login");
 ```
 
-Flash messages are automatically available as props in Svelte components:
+### Flash Messages in Frontend
 
 ```svelte
 <script>
@@ -310,18 +336,17 @@ public async index(request: Request, response: Response) {
     .offset(offset)
     .execute();
   
-  const result = await DB.selectFrom("posts")
-    .select((eb) => eb.fn.countAll().as("count"))
+  const total = await DB.selectFrom("posts")
+    .select(({ fn }) => [fn.count("*").as("count")])
     .executeTakeFirst();
-  const total = result?.count || 0;
   
   return response.inertia("posts/index", {
     posts,
     pagination: {
       page,
       perPage,
-      total,
-      totalPages: Math.ceil(total / perPage)
+      total: total.count,
+      totalPages: Math.ceil(total.count / perPage)
     }
   });
 }
@@ -337,17 +362,17 @@ public async index(request: Request, response: Response) {
   
   // Search
   if (search) {
-    query = query.where("title", "like", `%${search}%`);
+    query = query.where("title", "like", `%${search}%`) as any;
   }
   
   // Filter
   if (status) {
-    query = query.where("status", "=", status);
+    query = query.where("status", "=", status) as any;
   }
   
   // Sort
   const sortBy = sort || "created_at";
-  query = query.orderBy(sortBy, "desc");
+  query = query.orderBy(sortBy, "desc") as any;
   
   const posts = await query.execute();
   
@@ -355,97 +380,8 @@ public async index(request: Request, response: Response) {
 }
 ```
 
-### Pattern 3: API Response
-
-```typescript
-public async index(request: Request, response: Response) {
-  try {
-    const posts = await DB.selectFrom("posts").selectAll().execute();
-    
-    return response.json({
-      success: true,
-      data: posts,
-      meta: {
-        total: posts.length,
-        timestamp: Date.now()
-      }
-    });
-    
-  } catch (error) {
-    return response.status(500).json({
-      success: false,
-      error: "Failed to fetch posts",
-      message: error.message
-    });
-  }
-}
-```
-
-## Best Practices
-
-### ✅ DO
-
-1. **Keep controllers thin**
-```typescript
-// ✅ Good - Delegate to services
-public async store(request: Request, response: Response) {
-  const data = await request.json();
-  const post = await PostService.create(data);
-  return response.json({ success: true, data: post });
-}
-```
-
-2. **Use try-catch for error handling**
-```typescript
-// ✅ Good
-public async store(request: Request, response: Response) {
-  try {
-    const data = await request.json();
-    await DB.insertInto("posts").values(data).execute();
-    return response.json({ success: true });
-  } catch (error) {
-    return response.status(500).json({ error: "Failed to create post" });
-  }
-}
-```
-
-3. **Use static methods for internal helpers**
-```typescript
-class UserController {
-  public async store(request: Request, response: Response) {
-    const body = await request.json();
-    const validated = UserController.validateInput(body);
-    // ...
-  }
-
-  private static validateInput(data: any) {
-    return data.email && data.password && data.name;
-  }
-}
-```
-
-4. **Extract business logic to services**
-```typescript
-// Good controller structure
-class UserController {
-  public async store(request: Request, response: Response) {
-    const body = await request.json();
-    const validated = UserController.validateInput(body);
-    if (!validated) {
-      return response.status(400).json({ error: "Invalid input" });
-    }
-
-    const user = await UserService.create(validated);
-    return response.json({ user });
-  }
-
-  private static validateInput(data: any) {
-    return data.email && data.password && data.name;
-  }
-}
-```
-
 ## Next Steps
 
-- [Database](/guide/database) - Work with the database
-- [Middleware](/guide/middleware) - Add authentication & protection
+- [Validation](/guide/validation) - Validate user input
+- [Database](/guide/database) - Database operations
+- [Middleware](/guide/middleware) - Learn about middleware
