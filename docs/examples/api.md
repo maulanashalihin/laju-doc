@@ -68,7 +68,7 @@ export interface JWTPayload {
   exp?: number;
 }
 
-class JWTService {
+export const JWTService = {
   generateToken(payload: Omit<JWTPayload, "iat" | "exp">): string {
     return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
   }
@@ -84,9 +84,9 @@ class JWTService {
       return null;
     }
   }
-}
+};
 
-export default new JWTService();
+export default JWTService;
 ```
 
 ## API Authentication Middleware
@@ -201,9 +201,9 @@ const registerSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters")
 });
 
-class AuthController {
+export const AuthController = {
   // POST /api/v1/auth/login
-  public async login(request: Request, response: Response) {
+  async login(request: Request, response: Response) {
     try {
       const body = await request.json();
       const validation = Validator.validate(loginSchema, body);
@@ -280,7 +280,7 @@ class AuthController {
   }
 
   // POST /api/v1/auth/register
-  public async register(request: Request, response: Response) {
+  async register(request: Request, response: Response) {
     try {
       const body = await request.json();
       const validation = Validator.validate(registerSchema, body);
@@ -360,7 +360,7 @@ class AuthController {
   }
 
   // GET /api/v1/auth/me
-  public async me(request: Request, response: Response) {
+  async me(request: Request, response: Response) {
     const authUser = (request as any).authUser;
 
     const user = await DB.selectFrom("users")
@@ -383,9 +383,9 @@ class AuthController {
       data: { user }
     });
   }
-}
+};
 
-export default new AuthController();
+export default AuthController;
 ```
 
 ### Posts Controller
@@ -405,9 +405,9 @@ const postSchema = z.object({
   status: z.enum(["draft", "published"]).default("draft")
 });
 
-class PostController {
+export const PostController = {
   // GET /api/v1/posts
-  public async index(request: Request, response: Response) {
+  async index(request: Request, response: Response) {
     try {
       const page = parseInt(request.query.page || "1");
       const limit = Math.min(parseInt(request.query.limit || "20"), 100);
@@ -478,7 +478,7 @@ class PostController {
   }
 
   // GET /api/v1/posts/:id
-  public async show(request: Request, response: Response) {
+  async show(request: Request, response: Response) {
     try {
       const { id } = request.params;
 
@@ -524,7 +524,7 @@ class PostController {
   }
 
   // POST /api/v1/posts
-  public async store(request: Request, response: Response) {
+  async store(request: Request, response: Response) {
     try {
       const body = await request.json();
       const validation = Validator.validate(postSchema, body);
@@ -578,7 +578,7 @@ class PostController {
   }
 
   // PUT /api/v1/posts/:id
-  public async update(request: Request, response: Response) {
+  async update(request: Request, response: Response) {
     try {
       const { id } = request.params;
       const body = await request.json();
@@ -656,7 +656,7 @@ class PostController {
   }
 
   // DELETE /api/v1/posts/:id
-  public async destroy(request: Request, response: Response) {
+  async destroy(request: Request, response: Response) {
     try {
       const { id } = request.params;
       const authUser = (request as any).authUser;
@@ -703,9 +703,9 @@ class PostController {
       });
     }
   }
-}
+};
 
-export default new PostController();
+export default PostController;
 ```
 
 ## API Routes

@@ -15,23 +15,23 @@ node laju make:controller PostController
 import { Request, Response } from "../../type";
 import DB from "../services/DB";
 
-class PostController {
+export const PostController = {
   // List all posts
-  public async index(request: Request, response: Response) {
+  async index(request: Request, response: Response) {
     const posts = await DB.selectFrom("posts")
       .selectAll()
       .orderBy("created_at", "desc")
       .execute();
     return response.inertia("posts/index", { posts });
-  }
+  },
 
   // Show create form
-  public async create(request: Request, response: Response) {
+  async create(request: Request, response: Response) {
     return response.inertia("posts/create");
-  }
+  },
 
   // Store new post
-  public async store(request: Request, response: Response) {
+  async store(request: Request, response: Response) {
     const { title, content } = await request.json();
     
     await DB.insertInto("posts").values({
@@ -43,10 +43,10 @@ class PostController {
     }).execute();
     
     return response.redirect("/posts");
-  }
+  },
 
   // Show single post
-  public async show(request: Request, response: Response) {
+  async show(request: Request, response: Response) {
     const { id } = request.params;
     const post = await DB.selectFrom("posts")
       .selectAll()
@@ -58,10 +58,10 @@ class PostController {
     }
     
     return response.inertia("posts/show", { post });
-  }
+  },
 
   // Show edit form
-  public async edit(request: Request, response: Response) {
+  async edit(request: Request, response: Response) {
     const { id } = request.params;
     const post = await DB.selectFrom("posts")
       .selectAll()
@@ -73,10 +73,10 @@ class PostController {
     }
     
     return response.inertia("posts/edit", { post });
-  }
+  },
 
   // Update post
-  public async update(request: Request, response: Response) {
+  async update(request: Request, response: Response) {
     const { id } = request.params;
     const { title, content } = await request.json();
     
@@ -90,109 +90,90 @@ class PostController {
       .execute();
     
     return response.redirect("/posts");
-  }
+  },
 
   // Delete post
-  public async destroy(request: Request, response: Response) {
+  async destroy(request: Request, response: Response) {
     const { id } = request.params;
     await DB.deleteFrom("posts").where("id", "=", id).execute();
     return response.json({ success: true });
   }
-}
+};
 
-export default new PostController();
+export default PostController;
 ```
 
 ## Controller Organization
 
-### ⚠️ CRITICAL: Don't Use `this`
+### ✅ Controller Pattern: Plain Objects
 
-**Laju exports controller instances, not classes.** This affects how you organize controller code.
+**Laju controllers are plain objects, not classes.** This makes them simpler and more predictable.
 
-#### ❌ DON'T: Use `this` for internal methods
-
-```typescript
-// ❌ WRONG - this.method() doesn't work
-class UserController {
-  public async store(request: Request, response: Response) {
-    const body = await request.json();
-    const validated = this.validateUser(body); // This will fail!
-    await DB.insertInto("users").values(validated).execute();
-    return response.json({ success: true });
-  }
-
-  private validateUser(data: any) {
-    return data;
-  }
-}
-
-export default new UserController();
-```
-
-#### ✅ DO: Use Static Methods
+#### ✅ Correct Pattern
 
 ```typescript
-// ✅ CORRECT - Use static methods
-class UserController {
-  public async store(request: Request, response: Response) {
+// ✅ CORRECT - Plain object pattern
+export const UserController = {
+  async store(request: Request, response: Response) {
     const body = await request.json();
-    const validated = UserController.validateUser(body);
+    const validated = validateUser(body);
     await DB.insertInto("users").values(validated).execute();
     return response.json({ success: true });
-  }
+  },
 
-  private static validateUser(data: any) {
-    return data;
+  async index(request: Request, response: Response) {
+    const users = await DB.selectFrom("users").selectAll().execute();
+    return response.json({ users });
   }
-}
+};
 
-export default new UserController();
+export default UserController;
 ```
 
-#### ✅ DO: Use Separate Utility Functions
+#### ✅ Use Separate Utility Functions
 
 ```typescript
 // ✅ ALSO CORRECT - Extract to utility function
 import { validateUser } from "../utils/validation";
 
-class UserController {
-  public async store(request: Request, response: Response) {
+export const UserController = {
+  async store(request: Request, response: Response) {
     const body = await request.json();
     const validated = validateUser(body);
     await DB.insertInto("users").values(validated).execute();
     return response.json({ success: true });
   }
-}
+};
 
-export default new UserController();
+export default UserController;
 ```
 
 #### Service Layer Pattern
 
 ```typescript
 // app/services/UserService.ts
-class UserService {
+export const UserService = {
   async create(data: any) {
     const hashedPassword = await Authenticate.hash(data.password);
     const user = { ...data, password: hashedPassword };
     return await DB.insertInto("users").values(user).execute();
   }
-}
+};
 
-export default new UserService();
+export default UserService;
 
 // In controller
 import UserService from "../services/UserService";
 
-class UserController {
-  public async store(request: Request, response: Response) {
+export const UserController = {
+  async store(request: Request, response: Response) {
     const body = await request.json();
     const user = await UserService.create(body);
     return response.json({ user });
   }
-}
+};
 
-export default new UserController();
+export default UserController;
 ```
 
 ## Request & Response
@@ -200,7 +181,7 @@ export default new UserController();
 ### Request Methods
 
 ```typescript
-public async store(request: Request, response: Response) {
+async store(request: Request, response: Response) {
   // Get JSON body
   const data = await request.json();
   
@@ -266,7 +247,7 @@ return response.redirect("/new-path", 301);
 
 ```typescript
 // ✅ CORRECT - Use 303 for form updates
-public async update(request: Request, response: Response) {
+async update(request: Request, response: Response) {
   const body = await request.json();
   
   const validationResult = Validator.validate(updateSchema, body);
@@ -324,7 +305,7 @@ let { flash } = $props();
 ### Pattern 1: List with Pagination
 
 ```typescript
-public async index(request: Request, response: Response) {
+async index(request: Request, response: Response) {
   const page = parseInt(request.query.page || "1");
   const perPage = 10;
   const offset = (page - 1) * perPage;
@@ -355,7 +336,7 @@ public async index(request: Request, response: Response) {
 ### Pattern 2: Search & Filter
 
 ```typescript
-public async index(request: Request, response: Response) {
+async index(request: Request, response: Response) {
   const { search, status, sort } = request.query;
   
   let query = DB.selectFrom("posts").selectAll();

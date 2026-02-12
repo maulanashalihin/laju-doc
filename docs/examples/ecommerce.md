@@ -290,9 +290,9 @@ Create `app/controllers/shop/ProductController.ts`:
 import { Request, Response } from "../../../type";
 import DB from "../../services/DB";
 
-class ProductController {
+export const ProductController = {
   // List products with filters
-  public async index(request: Request, response: Response) {
+  async index(request: Request, response: Response) {
     const page = parseInt(request.query.page || "1");
     const category = request.query.category;
     const search = request.query.search;
@@ -387,7 +387,7 @@ class ProductController {
   }
 
   // Show single product
-  public async show(request: Request, response: Response) {
+  async show(request: Request, response: Response) {
     const { slug } = request.params;
 
     const product = await DB.selectFrom("products")
@@ -445,9 +445,9 @@ class ProductController {
       }))
     });
   }
-}
+};
 
-export default new ProductController();
+export default ProductController;
 ```
 
 ### CartController
@@ -459,9 +459,9 @@ import { Request, Response } from "../../../type";
 import DB from "../../services/DB";
 import { randomUUID } from "crypto";
 
-class CartController {
+export const CartController = {
   // Get or create cart
-  private async getCart(userId: string | null, sessionId: string) {
+  async getCart(userId: string | null, sessionId: string) {
     const cartItems = await DB.selectFrom("cart_items")
       .innerJoin("products", "cart_items.product_id", "products.id")
       .select([
@@ -495,7 +495,7 @@ class CartController {
   }
 
   // Get cart
-  public async index(request: Request, response: Response) {
+  async index(request: Request, response: Response) {
     const sessionId = request.session.id || randomUUID();
     const cart = await this.getCart(request.user?.id || null, sessionId);
 
@@ -503,7 +503,7 @@ class CartController {
   }
 
   // Add to cart
-  public async add(request: Request, response: Response) {
+  async add(request: Request, response: Response) {
     const { product_id, quantity = 1 } = await request.json();
     const userId = request.user?.id;
     const sessionId = request.session.id || randomUUID();
@@ -557,7 +557,7 @@ class CartController {
   }
 
   // Update quantity
-  public async update(request: Request, response: Response) {
+  async update(request: Request, response: Response) {
     const { id } = request.params;
     const { quantity } = await request.json();
     const userId = request.user?.id;
@@ -597,7 +597,7 @@ class CartController {
   }
 
   // Remove from cart
-  public async remove(request: Request, response: Response) {
+  async remove(request: Request, response: Response) {
     const { id } = request.params;
     const userId = request.user?.id;
     const sessionId = request.session.id;
@@ -612,7 +612,7 @@ class CartController {
   }
 
   // Clear cart
-  public async clear(request: Request, response: Response) {
+  async clear(request: Request, response: Response) {
     const userId = request.user?.id;
     const sessionId = request.session.id;
 
@@ -622,9 +622,9 @@ class CartController {
 
     return response.json({ success: true });
   }
-}
+};
 
-export default new CartController();
+export default CartController;
 ```
 
 ## Payment Integration (Stripe)
@@ -640,7 +640,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia'
 });
 
-class StripeService {
+export const StripeService = {
   async createPaymentIntent(amount: number, currency: string = 'usd') {
     return await stripe.paymentIntents.create({
       amount: amount * 100, // Convert to cents
@@ -658,9 +658,9 @@ class StripeService {
       payment_intent: paymentIntentId
     });
   }
-}
+};
 
-export default new StripeService();
+export default StripeService;
 ```
 
 ### Checkout Controller
@@ -673,9 +673,9 @@ import DB from "../../services/DB";
 import Stripe from "../../services/Stripe";
 import { randomUUID } from "crypto";
 
-class CheckoutController {
+export const CheckoutController = {
   // Show checkout page
-  public async index(request: Request, response: Response) {
+  async index(request: Request, response: Response) {
     const userId = request.user?.id;
     
     if (!userId) {
@@ -727,7 +727,7 @@ class CheckoutController {
   }
 
   // Process order
-  public async process(request: Request, response: Response) {
+  async process(request: Request, response: Response) {
     const userId = request.user?.id;
     
     if (!userId) {
@@ -837,9 +837,9 @@ class CheckoutController {
       }
     });
   }
-}
+};
 
-export default new CheckoutController();
+export default CheckoutController;
 ```
 
 ## Routes Configuration

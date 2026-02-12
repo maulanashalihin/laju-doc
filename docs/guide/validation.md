@@ -77,7 +77,7 @@ class PostController {
   }
 }
 
-export default new PostController();
+export default PostController;
 ```
 
 ## Validator Service API
@@ -115,7 +115,7 @@ Use `validate()` with flash messages for form submissions:
 import Validator from "../services/Validator";
 import { updateProfileSchema } from "../validators/ProfileValidator";
 
-class ProfileController {
+export const ProfileController = {
   public async update(request: Request, response: Response) {
     const body = await request.json();
 
@@ -154,8 +154,8 @@ Use `validate()` and handle JSON response in controller:
 import Validator from "../services/Validator";
 import { createPostSchema } from "../validators/PostValidator";
 
-class ApiController {
-  public async createPost(request: Request, response: Response) {
+export const ApiController = {
+  async createPost(request: Request, response: Response) {
     const body = await request.json();
 
     // Validate input

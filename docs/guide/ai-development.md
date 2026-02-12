@@ -6,16 +6,27 @@ Build complete applications using AI — no coding experience required!
 
 Laju is designed from the ground up for AI-assisted development. The standardized structure allows LLMs to understand, navigate, and build features automatically.
 
-## The 3-Agent Workflow
+## The 4-Agent Workflow
 
 ```mermaid
 graph TD
     A[INIT_AGENT] -->|Setup| B[PROJECT READY]
-    B -->|Build| C[TASK_AGENT]
+    B -->|Build Per Feature| C[TASK_AGENT]
+    B -->|Build All Features| F[ONE_SHOT_AGENT]
     C -->|Review| D[MANAGER_AGENT]
+    F -->|Review| D
     D -->|Deploy| E[PRODUCTION]
     E -->|Feedback| C
+    E -->|Feedback| F
 ```
+
+### Agent Selection Guide
+
+| Project Size | Recommendation | Why |
+|-------------|----------------|-----|
+| Small (< 10 features) | **ONE_SHOT_AGENT** | Fast, single session, auto-commit |
+| Medium (10-20 features) | **ONE_SHOT_AGENT** or **TASK_AGENT** | Choose based on review needs |
+| Large (20+ features) | **TASK_AGENT** | Better control, review per feature |
 
 ### 1. INIT_AGENT — Project Setup
 
@@ -52,9 +63,9 @@ I want to build a task management app where:
 - Clean, modern design with purple accents
 ```
 
-### 2. TASK_AGENT — Feature Implementation
+### 2. TASK_AGENT — Feature Implementation (Per Feature)
 
-**When to use:** Building features, fixing bugs, modifying code
+**When to use:** Building features one at a time, large projects, need review per feature
 
 **How to activate:**
 ```
@@ -69,6 +80,7 @@ I want to build a task management app where:
 - Adds routes
 - Creates database queries
 - Implements business logic
+- Waits for user review before continuing
 
 **Example:**
 ```
@@ -81,7 +93,48 @@ Create the project dashboard page showing:
 - Filter by status dropdown
 ```
 
-### 3. MANAGER_AGENT — Review & Deployment
+### 3. ONE_SHOT_AGENT — Feature Implementation (All at Once)
+
+**When to use:** Small to medium projects, clear requirements, want everything built in one session
+
+**How to activate:**
+```
+@workflow/ONE_SHOT_AGENT.md
+
+"Build all features from PROGRESS.md"
+```
+
+**What it does:**
+- Reads all pending tasks from PROGRESS.md
+- Implements ALL features sequentially (one by one)
+- Auto-commits after each feature completes
+- Updates PROGRESS.md automatically
+- Continues until ALL features are done
+- Shows progress summary after each feature
+
+**Example:**
+```
+@workflow/ONE_SHOT_AGENT.md
+
+Please implement all features from PROGRESS.md:
+- User management system
+- Product catalog with categories
+- Order management
+- Payment integration
+- Dashboard analytics
+```
+
+**Key Differences from TASK_AGENT:**
+
+| Aspect | TASK_AGENT | ONE_SHOT_AGENT |
+|--------|-----------|----------------|
+| Execution | Per feature (concurrent) | All features (sequential) |
+| Session | Multiple tabs/sessions | Single session |
+| User Review | After each feature | At the end |
+| Commit | Manual or on confirmation | Auto per feature |
+| Best For | Large projects, complex features | Small-medium projects, standard CRUD |
+
+### 4. MANAGER_AGENT — Review & Deployment
 
 **When to use:** Code review, deployment approval, release notes
 
@@ -132,13 +185,22 @@ Create the project dashboard page showing:
 Only the author can edit or delete their own posts."
 ```
 
-### Step-by-Step Workflow
+### Step-by-Step Workflow with TASK_AGENT
 
 1. **Start with INIT_AGENT** — Don't skip project setup
 2. **Review documentation** — Check PRD.md, TDD.md before building
 3. **Build one feature at a time** — Easier to review and fix
 4. **Test before continuing** — Open browser, try the feature
 5. **Update PROGRESS.md** — Mark completed tasks
+
+### One-Shot Workflow with ONE_SHOT_AGENT
+
+1. **Start with INIT_AGENT** — Setup project as usual
+2. **Review PROGRESS.md** — Ensure all features are defined
+3. **Activate ONE_SHOT_AGENT** — Let it build everything
+4. **Wait for completion** — Agent will show progress updates
+5. **Final review** — Test all features at once
+6. **Push to GitHub** — All commits are ready
 
 ### Use Clear Language
 
@@ -151,6 +213,8 @@ Only the author can edit or delete their own posts."
 ## Common Patterns
 
 ### Creating a CRUD Feature
+
+**Option A: Using TASK_AGENT (Step by Step)**
 
 **Step 1:** Describe the feature
 ```
@@ -175,6 +239,19 @@ Only the author can edit or delete their own posts."
 "The create form works, but please add:
 - Validation for empty name
 - Max length 100 characters for description"
+```
+
+**Option B: Using ONE_SHOT_AGENT (All at Once)**
+
+```
+@workflow/ONE_SHOT_AGENT.md
+
+"Implement all remaining features from PROGRESS.md:
+- Projects CRUD
+- Tasks management
+- Team members
+- Activity logs
+- Settings page"
 ```
 
 ### Adding Authentication
@@ -248,15 +325,16 @@ Show skeleton loading state while data loads"
 
 ## Workflow Files Reference
 
-| File | Purpose |
-|------|---------|
-| `workflow/INIT_AGENT.md` | Project initialization |
-| `workflow/TASK_AGENT.md` | Feature implementation |
-| `workflow/MANAGER_AGENT.md` | Review & deployment |
-| `workflow/PROGRESS.md` | Development tracking |
-| `workflow/PRD.md` | Product requirements |
-| `workflow/TDD.md` | Technical design |
-| `workflow/ui-kit.html` | Design system |
+| File | Purpose | When to Use |
+|------|---------|-------------|
+| `workflow/INIT_AGENT.md` | Project initialization | Starting new projects |
+| `workflow/TASK_AGENT.md` | Feature implementation (per feature) | Large projects, need review |
+| `workflow/ONE_SHOT_AGENT.md` | Feature implementation (all at once) | Small-medium projects |
+| `workflow/MANAGER_AGENT.md` | Review & deployment | Code review, releases |
+| `workflow/PROGRESS.md` | Development tracking | Track what's built |
+| `workflow/PRD.md` | Product requirements | Reference requirements |
+| `workflow/TDD.md` | Technical design | Reference technical specs |
+| `workflow/ui-kit.html` | Design system | Reference UI components |
 
 ## GitHub Actions Integration
 
@@ -272,7 +350,7 @@ The AI workflow integrates seamlessly with GitHub Actions:
 
 ### AI Not Following Conventions
 
-**Solution:** Always start with `@workflow/INIT_AGENT.md` or `@workflow/TASK_AGENT.md`
+**Solution:** Always start with `@workflow/INIT_AGENT.md`, `@workflow/TASK_AGENT.md`, or `@workflow/ONE_SHOT_AGENT.md`
 
 ### AI Creates Wrong File Structure
 
@@ -286,7 +364,7 @@ The AI workflow integrates seamlessly with GitHub Actions:
 **Solution:** Remind AI:
 ```
 "Remember: Laju controllers don't use 'this'.
-Use: export default new ControllerName()"
+Use: export default ControllerName"
 ```
 
 ### AI Hallucinates Features
@@ -295,7 +373,26 @@ Use: export default new ControllerName()"
 
 ## Real-World Examples
 
-### Example 1: E-commerce App
+### Example 1: Small Project with ONE_SHOT_AGENT
+
+```
+@workflow/INIT_AGENT.md
+
+"Build a simple contact management app:
+- Contacts with name, email, phone, company
+- CRUD operations
+- Search and filter
+- Export to CSV"
+```
+
+Then:
+```
+@workflow/ONE_SHOT_AGENT.md
+
+"Implement all features from PROGRESS.md"
+```
+
+### Example 2: E-commerce App with TASK_AGENT
 
 ```
 @workflow/INIT_AGENT.md
@@ -308,7 +405,21 @@ Use: export default new ControllerName()"
 - Admin dashboard for products"
 ```
 
-### Example 2: SaaS Dashboard
+Then build feature by feature:
+```
+@workflow/TASK_AGENT.md
+"Create product catalog with categories"
+```
+```
+@workflow/TASK_AGENT.md
+"Create shopping cart functionality"
+```
+```
+@workflow/TASK_AGENT.md
+"Create checkout with Stripe integration"
+```
+
+### Example 3: SaaS Dashboard
 
 ```
 @workflow/INIT_AGENT.md
@@ -321,7 +432,7 @@ Use: export default new ControllerName()"
 - Billing with subscription plans"
 ```
 
-### Example 3: Social Platform
+### Example 4: Social Platform
 
 ```
 @workflow/INIT_AGENT.md

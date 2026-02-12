@@ -51,15 +51,14 @@ app/controllers/
 import { Request, Response } from "../../type";
 import DB from "../services/DB";
 
-class PostController {
-  public async index(request: Request, response: Response) {
+export const PostController = {
+  async index(request: Request, response: Response) {
     const posts = await DB.selectFrom("posts").selectAll().execute();
     return response.inertia("posts/index", { posts });
   }
-}
+};
 
-// IMPORTANT: Export as instance (not class)
-export default new PostController();
+export default PostController;
 ```
 
 ### Services (`app/services/`)

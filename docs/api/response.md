@@ -344,7 +344,7 @@ return response
 import { Request, Response } from "../../type";
 import DB from "../services/DB";
 
-class ApiController {
+export const ApiController = {
   // GET /api/users
   public async index(request: Request, response: Response) {
     const users = await DB.selectFrom("users")
@@ -420,9 +420,9 @@ class ApiController {
     
     return response.status(204).send();
   }
-}
+};
 
-export default new ApiController();
+export default ApiController;
 ```
 
 ### Form Handling with Flash Messages
@@ -433,7 +433,7 @@ import DB from "../services/DB";
 import Validator from "../services/Validator";
 import { contactSchema } from "../validators/ContactValidator";
 
-class ContactController {
+export const ContactController = {
   // Show contact form
   public async create(request: Request, response: Response) {
     return response.inertia("contact/form");
@@ -479,7 +479,7 @@ class ContactController {
   }
 }
 
-export default new ContactController();
+export default ContactController;
 ```
 
 ### Authentication Flow
@@ -539,7 +539,7 @@ class AuthController {
   }
 }
 
-export default new AuthController();
+export default AuthController;
 ```
 
 ## TypeScript Types

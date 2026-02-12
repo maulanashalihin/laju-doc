@@ -136,8 +136,8 @@ import { Request, Response } from "../../type";
 import Authenticate from "../services/Authenticate";
 import { UserRepository } from "../repositories/UserRepository";
 
-class AuthController {
-  public async loginPage(request: Request, response: Response) {
+export const AuthController = {
+  async loginPage(request: Request, response: Response) {
     if (request.cookies.auth_id) {
       return response.redirect("/home");
     }
@@ -167,14 +167,14 @@ class AuthController {
     }
   }
 
-  public async logout(request: Request, response: Response) {
+  async logout(request: Request, response: Response) {
     if (request.cookies.auth_id) {
       await Authenticate.logout(request, response);
     }
   }
-}
+};
 
-export default new AuthController();
+export default AuthController;
 ```
 
 ## Validator Service
@@ -398,8 +398,8 @@ import { MailTo } from "app/services/Mailer";
 import { randomBytes } from "crypto";
 import DB from "../services/DB";
 
-class PasswordController {
-  public async forgotPassword(request: Request, response: Response) {
+export const PasswordController = {
+  async forgotPassword(request: Request, response: Response) {
     const { email } = await request.json();
     
     const user = await DB.selectFrom("users")
@@ -451,7 +451,7 @@ If you didn't request this, please ignore this email.`
   }
 }
 
-export default new PasswordController();
+export default PasswordController;
 ```
 
 ## Logger Service

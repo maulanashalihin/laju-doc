@@ -298,7 +298,7 @@ import DB from "../services/DB";
 import Validator from "../services/Validator";
 import { postSchema } from "../validators/PostValidator";
 
-class PostController {
+export const PostController = {
   /**
    * List posts with pagination and filtering
    */
@@ -389,7 +389,7 @@ class PostController {
   /**
    * Update post
    */
-  public async update(request: Request, response: Response) {
+  async update(request: Request, response: Response) {
     const { id } = request.params;
     const body = await request.json();
     
@@ -440,9 +440,9 @@ class PostController {
     
     return response.json({ logged: true });
   }
-}
+};
 
-export default new PostController();
+export default PostController;
 ```
 
 ## TypeScript Types

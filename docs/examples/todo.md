@@ -106,9 +106,9 @@ const updateSchema = z.object({
   due_date: z.string().optional()
 });
 
-class TodoController {
+export const TodoController = {
   // List all todos with filtering
-  public async index(request: Request, response: Response) {
+  async index(request: Request, response: Response) {
     const filter = request.query.filter || "all"; // all, active, completed
     const userId = request.user?.id;
 
@@ -149,7 +149,7 @@ class TodoController {
   }
 
   // Store new todo
-  public async store(request: Request, response: Response) {
+  async store(request: Request, response: Response) {
     if (!request.user) {
       return response.status(401).json({ error: "Unauthorized" });
     }
@@ -184,7 +184,7 @@ class TodoController {
   }
 
   // Update todo
-  public async update(request: Request, response: Response) {
+  async update(request: Request, response: Response) {
     const { id } = request.params;
     const body = await request.json();
 
@@ -233,7 +233,7 @@ class TodoController {
   }
 
   // Delete todo
-  public async destroy(request: Request, response: Response) {
+  async destroy(request: Request, response: Response) {
     const { id } = request.params;
 
     const todo = await DB.selectFrom("todos")
@@ -257,7 +257,7 @@ class TodoController {
   }
 
   // Toggle all todos
-  public async toggleAll(request: Request, response: Response) {
+  async toggleAll(request: Request, response: Response) {
     if (!request.user) {
       return response.status(401).json({ error: "Unauthorized" });
     }
@@ -274,7 +274,7 @@ class TodoController {
   }
 
   // Clear completed
-  public async clearCompleted(request: Request, response: Response) {
+  async clearCompleted(request: Request, response: Response) {
     if (!request.user) {
       return response.status(401).json({ error: "Unauthorized" });
     }
@@ -286,9 +286,9 @@ class TodoController {
 
     return response.json({ success: true });
   }
-}
+};
 
-export default new TodoController();
+export default TodoController;
 ```
 
 ## Svelte Pages

@@ -55,65 +55,69 @@ await Authenticate.logout(request, response);
 
 ```typescript
 // app/controllers/RegisterController.ts
-public async processRegister(request: Request, response: Response) {
-  const { name, email, password } = await request.json();
-  
-  // Hash password
-  const hashedPassword = await Authenticate.hash(password);
-  
-  // Create user
-  const user = {
-    id: randomUUID(),
-    name,
-    email: email.toLowerCase(),
-    password: hashedPassword,
-    created_at: Date.now(),
-    updated_at: Date.now()
-  };
-  
-  try {
-    await DB.insertInto("users").values(user).execute();
-    return Authenticate.process(user, request, response);
-  } catch (error) {
-    // Handle duplicate email
-    return response
-      .cookie("error", "Email already registered", 3000)
-      .redirect("/register");
+export const RegisterController = {
+  async processRegister(request: Request, response: Response) {
+    const { name, email, password } = await request.json();
+    
+    // Hash password
+    const hashedPassword = await Authenticate.hash(password);
+    
+    // Create user
+    const user = {
+      id: randomUUID(),
+      name,
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      created_at: Date.now(),
+      updated_at: Date.now()
+    };
+    
+    try {
+      await DB.insertInto("users").values(user).execute();
+      return Authenticate.process(user, request, response);
+    } catch (error) {
+      // Handle duplicate email
+      return response
+        .cookie("error", "Email already registered", 3000)
+        .redirect("/register");
+    }
   }
-}
+};
 ```
 
 ### Login Example
 
 ```typescript
 // app/controllers/LoginController.ts
-public async processLogin(request: Request, response: Response) {
-  const { email, password } = await request.json();
-  
-  // Find user
-  const user = await DB.selectFrom("users")
-    .selectAll()
-    .where("email", "=", email.toLowerCase())
-    .executeTakeFirst();
-  
-  if (!user) {
-    return response
-      .cookie("error", "Email not registered", 3000)
-      .redirect("/login");
+export const LoginController = {
+  async processLogin(request: Request, response: Response) {
+    const { email, password } = await request.json();
+    
+    // Find user
+    const user = await DB.selectFrom("users")
+      .selectAll()
+      .where("email", "=", email.toLowerCase())
+      .executeTakeFirst();
+    
+    if (!user) {
+      return response
+        .cookie("error", "Email not registered", 3000)
+        .redirect("/login");
+    }
+    
+    // Verify password
+    const valid = await Authenticate.compare(password, user.password);
+    
+    if (!valid) {
+      return response
+        .cookie("error", "Invalid password", 3000)
+        .redirect("/login");
+    }
+    
+    // Create session
+    return Authenticate.process(user, request, response);
   }
-  
-  // Verify password
-  const valid = await Authenticate.compare(password, user.password);
-  
-  if (!valid) {
-    return response
-      .cookie("error", "Invalid password", 3000)
-      .redirect("/login");
-  }
-  
-  // Create session
-  return Authenticate.process(user, request, response);
-}
+};
 ```
 
 ## Auth Middleware
@@ -170,7 +174,7 @@ Route.post("/posts", [Auth], PostController.store);
 ### Access User in Controller
 
 ```typescript
-public async store(request: Request, response: Response) {
+async store(request: Request, response: Response) {
   // Access authenticated user
   const userId = request.user.id;
   const userName = request.user.name;
@@ -233,7 +237,7 @@ export async function up(db: Kysely<any>): Promise<void> {
 ### Logout
 
 ```typescript
-public async logout(request: Request, response: Response) {
+async logout(request: Request, response: Response) {
   if (request.cookies.auth_id) {
     await Authenticate.logout(request, response);
   }
@@ -264,16 +268,16 @@ GOOGLE_REDIRECT_URI=http://localhost:5555/google/callback
 // app/controllers/OAuthController.ts
 import { redirectParamsURL } from "../services/GoogleAuth";
 
-class OAuthController {
+export const OAuthController = {
   // Step 1: Redirect to Google
-  public async redirect(request: Request, response: Response) {
+  async redirect(request: Request, response: Response) {
     const params = redirectParamsURL();
     const googleLoginUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
     return response.redirect(googleLoginUrl);
-  }
+  },
 
   // Step 2: Handle callback
-  public async googleCallback(request: Request, response: Response) {
+  async googleCallback(request: Request, response: Response) {
     const { code } = request.query;
 
     // Exchange code for tokens
@@ -337,7 +341,7 @@ Route.get("/google/callback", OAuthController.googleCallback);
 
 ```typescript
 // app/controllers/PasswordController.ts
-public async sendResetPassword(request: Request, response: Response) {
+async sendResetPassword(request: Request, response: Response) {
   const { email } = await request.json();
   
   const user = await DB.selectFrom("users")
@@ -365,7 +369,7 @@ public async sendResetPassword(request: Request, response: Response) {
   return response.send("OK");
 }
 
-public async resetPassword(request: Request, response: Response) {
+async resetPassword(request: Request, response: Response) {
   const { id, password } = await request.json();
 
   const token = await DB.selectFrom("password_reset_tokens")
@@ -407,7 +411,7 @@ public async resetPassword(request: Request, response: Response) {
 
 ```typescript
 // app/controllers/VerificationController.ts
-public async verify(request: Request, response: Response) {
+async verify(request: Request, response: Response) {
   const token = randomUUID();
 
   await DB.deleteFrom("email_verification_tokens")
@@ -429,7 +433,7 @@ public async verify(request: Request, response: Response) {
   return response.redirect("/home");
 }
 
-public async verifyPage(request: Request, response: Response) {
+async verifyPage(request: Request, response: Response) {
   const { id } = request.params;
 
   const verificationToken = await DB.selectFrom("email_verification_tokens")

@@ -177,9 +177,9 @@ const commentSchema = z.object({
   content: z.string().min(1, "Comment is required").max(2000)
 });
 
-class BlogController {
+export const BlogController = {
   // List all posts with pagination
-  public async index(request: Request, response: Response) {
+  async index(request: Request, response: Response) {
     const page = parseInt(request.query.page || "1");
     const category = request.query.category;
     const search = request.query.search;
@@ -237,7 +237,7 @@ class BlogController {
   }
 
   // Show single post
-  public async show(request: Request, response: Response) {
+  async show(request: Request, response: Response) {
     const { slug } = request.params;
 
     const post = await DB.selectFrom("posts")
@@ -284,7 +284,7 @@ class BlogController {
   }
 
   // Show create form
-  public async create(request: Request, response: Response) {
+  async create(request: Request, response: Response) {
     const categories = await DB.selectFrom("categories")
       .selectAll()
       .orderBy("name")
@@ -294,7 +294,7 @@ class BlogController {
   }
 
   // Store new post
-  public async store(request: Request, response: Response) {
+  async store(request: Request, response: Response) {
     if (!request.user) {
       return response.status(401).json({ error: "Unauthorized" });
     }
@@ -344,7 +344,7 @@ class BlogController {
   }
 
   // Show edit form
-  public async edit(request: Request, response: Response) {
+  async edit(request: Request, response: Response) {
     const { id } = request.params;
 
     const post = await DB.selectFrom("posts")
@@ -369,7 +369,7 @@ class BlogController {
   }
 
   // Update post
-  public async update(request: Request, response: Response) {
+  async update(request: Request, response: Response) {
     const { id } = request.params;
     const body = await request.json();
 
@@ -419,7 +419,7 @@ class BlogController {
   }
 
   // Delete post
-  public async destroy(request: Request, response: Response) {
+  async destroy(request: Request, response: Response) {
     const { id } = request.params;
 
     const post = await DB.selectFrom("posts")
@@ -445,7 +445,7 @@ class BlogController {
   }
 
   // Add comment
-  public async addComment(request: Request, response: Response) {
+  async addComment(request: Request, response: Response) {
     if (!request.user) {
       return response.status(401).json({ error: "Login required" });
     }
@@ -485,9 +485,9 @@ class BlogController {
       .flash("success", "Comment added!")
       .redirect(`/blog/${slug}`, 303);
   }
-}
+};
 
-export default new BlogController();
+export default BlogController;
 ```
 
 ## Svelte Pages
