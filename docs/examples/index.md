@@ -69,10 +69,32 @@ npm run dev
 
 ### Or with AI
 
+**Step 1: Product Agent**
 ```
-@workflow/INIT_AGENT.md
+@workflow/agents/product.md
 
 "Create a blog like the example at /examples/blog"
+```
+
+**Step 2: Tech Lead Agent** (after PRD approved)
+```
+@workflow/agents/tech-lead.md
+
+Lanjutkan dari Product Agent.
+```
+
+**Step 3: Developer Agent** (after tech design approved)
+```
+@workflow/agents/developer.md
+
+Implement semua fitur blog.
+```
+
+**Step 4: QA Agent** (after implementation approved)
+```
+@workflow/agents/qa.md
+
+Test aplikasi blog.
 ```
 
 ## Contributing Examples

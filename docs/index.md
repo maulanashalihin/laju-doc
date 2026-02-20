@@ -19,7 +19,7 @@ hero:
 features:
   - icon: 🤖
     title: AI-First Design
-    details: Built for AI-assisted development. Just mention @workflow/INIT_AGENT.md and describe your app. AI handles the rest.
+    details: Built for AI-assisted development. 5-Agent Workflow with mandatory review points. Just describe your app and AI handles the rest.
   - icon: ⚡
     title: Blazing Fast
     details: 258,611 requests/sec with HyperExpress. 11x faster than Express.js and 3,232x faster than Laravel.
@@ -59,9 +59,12 @@ npm run migrate && npm run dev
 Then mention in your AI assistant:
 
 ```
-@workflow/INIT_AGENT.md
+@workflow/agents/product.md
+
 "I want to build a blog with posts, categories, and comments"
 ```
+
+Continue with 5-Agent Workflow: Product → Tech Lead → Developer → QA → DevOps
 
 ### Manual
 

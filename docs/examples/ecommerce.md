@@ -873,7 +873,7 @@ Route.post("/checkout/process", [Auth], CheckoutController.process);
 To build this e-commerce system using AI:
 
 ```
-@workflow/INIT_AGENT.md
+@workflow/agents/product.md
 
 Create an e-commerce system with these features:
 - Product catalog with categories
@@ -891,7 +891,7 @@ Create an e-commerce system with these features:
 Then continue with:
 
 ```
-@workflow/TASK_AGENT.md
+@workflow/agents/developer.md
 
 Create the product catalog page with:
 - Grid layout for products
@@ -905,7 +905,7 @@ Create the product catalog page with:
 ```
 
 ```
-@workflow/TASK_AGENT.md
+@workflow/agents/developer.md
 
 Create the shopping cart with:
 - List of cart items with images

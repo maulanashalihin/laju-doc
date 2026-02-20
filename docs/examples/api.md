@@ -885,7 +885,7 @@ JWT_EXPIRES_IN=24h
 ## AI Prompt Example
 
 ```
-@workflow/INIT_AGENT.md
+@workflow/agents/product.md
 
 Create a REST API with:
 - JWT authentication (login/register)
@@ -903,7 +903,7 @@ Create a REST API with:
 Then continue with:
 
 ```
-@workflow/TASK_AGENT.md
+@workflow/agents/developer.md
 
 Create the authentication system:
 - JWT service for token generation/verification
@@ -914,7 +914,7 @@ Create the authentication system:
 ```
 
 ```
-@workflow/TASK_AGENT.md
+@workflow/agents/developer.md
 
 Create the posts API:
 - Post controller with CRUD methods

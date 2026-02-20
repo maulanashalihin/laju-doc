@@ -35,12 +35,12 @@ npm run migrate && npm run dev
 
 Visit `http://localhost:5555` — you should see the welcome page.
 
-### Step 2: Initialize with AI (1 minute)
+### Step 2: Product Agent — Define Requirements (1 minute)
 
 Open your AI assistant (Claude, ChatGPT, etc.) and type:
 
 ```
-@workflow/INIT_AGENT.md
+@workflow/agents/product.md
 
 I want to build a blog system with:
 - Posts with title, content, and cover image
@@ -51,41 +51,71 @@ I want to build a blog system with:
 ```
 
 **What AI will do:**
-- Create README, PRD, TDD, PROGRESS documents
-- Setup design system (Tailwind config, colors)
-- Create database migrations
-- Prepare project structure
-- Initialize git
+- Create PRD.md (Product Requirements)
+- Create USER_STORIES.md
+- Create ROADMAP.md
+- Define Design Direction (colors, typography)
 
-### Step 3: Build Features (2 minutes)
+**Review:** Check `workflow/outputs/01-product/` and approve before continuing.
 
-After AI finishes initialization, mention:
+### Step 3: Tech Lead Agent — Technical Design (1 minute)
 
 ```
-@workflow/TASK_AGENT.md
+@workflow/agents/tech-lead.md
 
-Create the blog index page showing:
-- List of posts with pagination
-- Category filter sidebar
-- Search functionality
-- "New Post" button for authenticated users
+Lanjutkan dari Product Agent.
+Kebutuhan produk sudah di-approve client.
 ```
 
 **What AI will do:**
-- Create `BlogController.ts`
-- Create `resources/js/Pages/blog/index.svelte`
-- Add routes to `routes/web.ts`
-- Run migrations
-- Test the feature
+- Create TECH_SPEC.md
+- Create ARCHITECTURE.md
+- Create PAGE_ROUTES.md
+- Create DATABASE_SCHEMA.md
+- Create TASKS.md
 
-### Step 4: Review & Continue (1 minute)
+**Review:** Check `workflow/outputs/02-engineering/` and approve before continuing.
 
-Open `http://localhost:5555/blog` — your blog is live!
+### Step 4: Developer Agent — Build Features (2 minutes)
 
-Continue building:
 ```
-@workflow/TASK_AGENT.md
-"Now create the individual post page with comments section"
+@workflow/agents/developer.md
+
+Implement semua fitur dari TASKS.md.
+```
+
+**What AI will do:**
+- Create controllers
+- Create Svelte pages dengan Header component
+- Add routes
+- Create migrations dan update type/db-types.ts
+- Git commit setiap fitur
+
+**Review:** Test di `http://localhost:5555` dan approve sebelum QA.
+
+### Step 5: QA Agent — Testing (1 minute)
+
+```
+@workflow/agents/qa.md
+
+Test aplikasi dan buat test report.
+```
+
+**What AI will do:**
+- Code review
+- Unit tests (Vitest)
+- Integration tests
+- E2E tests (Playwright)
+- Test report
+
+**Review:** Approve test results sebelum deploy.
+
+### Step 6: DevOps Agent — Deploy (Optional)
+
+```
+@workflow/agents/devops.md
+
+Deploy ke production server.
 ```
 
 **Total time: 5 minutes** ⏱️
@@ -137,28 +167,52 @@ export default PostController;
 Create `migrations/20250130000000_create_posts.ts`:
 
 ```typescript
-import { Kysely } from "kysely";
-
-export async function up(db: Kysely<any>): Promise<void> {
-  await db.schema
-    .createTable("posts")
-    .addColumn("id", "text", (col) => col.primaryKey().notNull())
-    .addColumn("title", "text", (col) => col.notNull())
-    .addColumn("content", "text")
-    .addColumn("user_id", "text", (col) => col.references("users.id"))
-    .addColumn("created_at", "integer")
-    .addColumn("updated_at", "integer")
-    .execute();
-}
-
-export async function down(db: Kysely<any>): Promise<void> {
-  await db.schema.dropTable("posts").execute();
-}
+export default {
+  name: '20250130000000_create_posts',
+  
+  up: async (DB: Kysely<any>) => {
+    await DB.schema
+      .createTable("posts")
+      .addColumn("id", "text", (col) => col.primaryKey().notNull())
+      .addColumn("title", "text", (col) => col.notNull())
+      .addColumn("content", "text")
+      .addColumn("user_id", "text", (col) => col.references("users.id"))
+      .addColumn("created_at", "integer")
+      .addColumn("updated_at", "integer")
+      .execute();
+  },
+  
+  down: async (DB: Kysely<any>) => {
+    await DB.schema.dropTable("posts").execute();
+  }
+};
 ```
 
 Run migration:
 ```bash
 npm run migrate
+```
+
+**⚠️ Update type/db-types.ts untuk type safety:**
+
+```typescript
+export interface PostTable {
+  id: string;
+  title: string;
+  content: string | null;
+  user_id: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface DB {
+  // ... existing tables
+  posts: PostTable;
+}
+
+export type Post = Selectable<PostTable>;
+export type NewPost = Insertable<PostTable>;
+export type PostUpdate = Updateable<PostTable>;
 ```
 
 ### Step 4: Create Svelte Page
@@ -167,17 +221,20 @@ Create `resources/js/Pages/posts/index.svelte`:
 
 ```svelte
 <script>
+  import Header from '../../Components/Header.svelte'
   let { posts } = $props()
 </script>
 
-<div class="max-w-4xl mx-auto p-6">
+<Header group="posts" />
+
+<div class="max-w-4xl mx-auto p-6 pt-24">
   <h1 class="text-3xl font-bold mb-6">Blog Posts</h1>
   
   <div class="space-y-4">
     {#each posts as post}
-      <div class="bg-slate-800 rounded-lg p-4">
-        <h2 class="text-xl font-semibold text-white">{post.title}</h2>
-        <p class="text-slate-400 mt-2">{post.content}</p>
+      <div class="bg-white dark:bg-slate-800 rounded-lg p-4 shadow">
+        <h2 class="text-xl font-semibold">{post.title}</h2>
+        <p class="text-slate-600 dark:text-slate-400 mt-2">{post.content}</p>
       </div>
     {/each}
   </div>
@@ -190,9 +247,10 @@ Edit `routes/web.ts`:
 
 ```typescript
 import PostController from "../app/controllers/PostController";
+import Auth from "../app/middlewares/auth";
 
 // Add this line
-Route.get("/posts", PostController.index);
+Route.get("/posts", [Auth], PostController.index);
 ```
 
 Visit `http://localhost:5555/posts` — your blog is live!
@@ -206,14 +264,14 @@ Visit `http://localhost:5555/posts` — your blog is live!
 Choose your path:
 
 ### AI Path
-- [Learn AI Agent Workflows](./ai-development) — Deep dive into INIT_AGENT, TASK_AGENT, MANAGER_AGENT
-- [AI Best Practices](./ai-development#tips) — Get better results from AI
+- [AI Development Workflow](./ai-development) — Deep dive into 5-Agent Workflow
+- [AI Best Practices](./ai-development#best-practices) — Get better results from AI
 
 ### Manual Path
 - [Project Structure](./project-structure) — Understand the layout
 - [Routing](./routing) — Full routing guide
 - [Controllers](./controllers) — Build backend logic
-- [Database](./database) — Master Kysely queries
+- [Database](./database) — Master Kysely queries dengan type safety
 - [Authentication](./authentication) — Add login/register
 
 ### Both Paths
@@ -242,5 +300,8 @@ npm run refresh
 ```bash
 npm install
 ```
+
+### Kysely type errors
+Pastikan `type/db-types.ts` sudah diupdate sesuai migration.
 
 [Full Troubleshooting Guide](https://github.com/maulanashalihin/laju/blob/main/docs/99-troubleshooting.md)

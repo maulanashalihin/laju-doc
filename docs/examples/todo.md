@@ -538,7 +538,7 @@ Route.post("/todos/clear-completed", [Auth], TodoController.clearCompleted);
 To build this todo app using AI:
 
 ```
-@workflow/INIT_AGENT.md
+@workflow/agents/product.md
 
 Create a todo app with these features:
 - Add, edit, delete todos
@@ -554,7 +554,7 @@ Create a todo app with these features:
 Then continue with:
 
 ```
-@workflow/TASK_AGENT.md
+@workflow/agents/developer.md
 
 Create the todo list page with:
 - Input form to add new todos

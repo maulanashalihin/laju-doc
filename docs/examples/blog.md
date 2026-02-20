@@ -26,80 +26,84 @@ A complete blog system with posts, categories, comments, and an admin dashboard.
 Create `migrations/20250130000000_create_blog_tables.ts`:
 
 ```typescript
-import { Kysely, sql } from "kysely";
+export default {
+  name: '20250130000000_create_blog_tables',
+  
+  up: async (DB: Kysely<any>) => {
+    // Categories table
+    await DB.schema
+      .createTable("categories")
+      .addColumn("id", "text", (col) => col.primaryKey().notNull())
+      .addColumn("name", "text", (col) => col.notNull())
+      .addColumn("slug", "text", (col) => col.notNull().unique())
+      .addColumn("description", "text")
+      .addColumn("created_at", "integer")
+      .addColumn("updated_at", "integer")
+      .execute();
 
-export async function up(db: Kysely<any>): Promise<void> {
-  // Categories table
-  await db.schema
-    .createTable("categories")
-    .addColumn("id", "text", (col) => col.primaryKey().notNull())
-    .addColumn("name", "text", (col) => col.notNull())
-    .addColumn("slug", "text", (col) => col.notNull().unique())
-    .addColumn("description", "text")
-    .addColumn("created_at", "integer")
-    .addColumn("updated_at", "integer")
-    .execute();
+    // Posts table
+    await DB.schema
+      .createTable("posts")
+      .addColumn("id", "text", (col) => col.primaryKey().notNull())
+      .addColumn("title", "text", (col) => col.notNull())
+      .addColumn("slug", "text", (col) => col.notNull().unique())
+      .addColumn("content", "text")
+      .addColumn("excerpt", "text")
+      .addColumn("cover_image", "text")
+      .addColumn("status", "text", (col) => col.defaultTo("draft"))
+      .addColumn("category_id", "text")
+      .addColumn("user_id", "text", (col) => col.references("users.id"))
+      .addColumn("published_at", "integer")
+      .addColumn("created_at", "integer")
+      .addColumn("updated_at", "integer")
+      .execute();
 
-  // Posts table
-  await db.schema
-    .createTable("posts")
-    .addColumn("id", "text", (col) => col.primaryKey().notNull())
-    .addColumn("title", "text", (col) => col.notNull())
-    .addColumn("slug", "text", (col) => col.notNull().unique())
-    .addColumn("content", "text")
-    .addColumn("excerpt", "text")
-    .addColumn("cover_image", "text")
-    .addColumn("status", "text", (col) => col.defaultTo("draft"))
-    .addColumn("category_id", "text")
-    .addColumn("user_id", "text", (col) => col.references("users.id"))
-    .addColumn("published_at", "integer")
-    .addColumn("created_at", "integer")
-    .addColumn("updated_at", "integer")
-    .execute();
+    // Comments table
+    await DB.schema
+      .createTable("comments")
+      .addColumn("id", "text", (col) => col.primaryKey().notNull())
+      .addColumn("post_id", "text", (col) => col.references("posts.id").onDelete("cascade"))
+      .addColumn("user_id", "text", (col) => col.references("users.id"))
+      .addColumn("content", "text", (col) => col.notNull())
+      .addColumn("created_at", "integer")
+      .addColumn("updated_at", "integer")
+      .execute();
 
-  // Comments table
-  await db.schema
-    .createTable("comments")
-    .addColumn("id", "text", (col) => col.primaryKey().notNull())
-    .addColumn("post_id", "text", (col) => col.references("posts.id").onDelete("cascade"))
-    .addColumn("user_id", "text", (col) => col.references("users.id"))
-    .addColumn("content", "text", (col) => col.notNull())
-    .addColumn("created_at", "integer")
-    .addColumn("updated_at", "integer")
-    .execute();
+    // Indexes
+    await DB.schema
+      .createIndex("posts_slug_idx")
+      .on("posts")
+      .column("slug")
+      .execute();
 
-  // Indexes
-  await db.schema
-    .createIndex("posts_slug_idx")
-    .on("posts")
-    .column("slug")
-    .execute();
+    await DB.schema
+      .createIndex("posts_status_published_idx")
+      .on("posts")
+      .columns(["status", "published_at"])
+      .execute();
 
-  await db.schema
-    .createIndex("posts_status_published_idx")
-    .on("posts")
-    .columns(["status", "published_at"])
-    .execute();
+    await DB.schema
+      .createIndex("posts_category_idx")
+      .on("posts")
+      .column("category_id")
+      .execute();
 
-  await db.schema
-    .createIndex("posts_category_idx")
-    .on("posts")
-    .column("category_id")
-    .execute();
-
-  await db.schema
-    .createIndex("comments_post_idx")
-    .on("comments")
-    .column("post_id")
-    .execute();
-}
-
-export async function down(db: Kysely<any>): Promise<void> {
-  await db.schema.dropTable("comments").execute();
-  await db.schema.dropTable("posts").execute();
-  await db.schema.dropTable("categories").execute();
-}
+    await DB.schema
+      .createIndex("comments_post_idx")
+      .on("comments")
+      .column("post_id")
+      .execute();
+  },
+  
+  down: async (DB: Kysely<any>) => {
+    await DB.schema.dropTable("comments").execute();
+    await DB.schema.dropTable("posts").execute();
+    await DB.schema.dropTable("categories").execute();
+  }
+};
 ```
+
+**⚠️ Jangan lupa update `type/db-types.ts`:**
 
 ### Type Definitions
 
@@ -903,10 +907,11 @@ Route.post("/blog/:slug/comments", [Auth], BlogController.addComment);
 
 ## AI Prompt Example
 
-To build this blog system using AI:
+To build this blog system using AI (5-Agent Workflow):
 
+### Step 1: Product Agent
 ```
-@workflow/INIT_AGENT.md
+@workflow/agents/product.md
 
 Create a blog system with these features:
 - Blog posts with title, slug, content, excerpt, cover image
@@ -922,28 +927,41 @@ Create a blog system with these features:
 - Dark mode support
 ```
 
-Then continue with:
-
+### Step 2: Tech Lead Agent (after PRD approved)
 ```
-@workflow/TASK_AGENT.md
+@workflow/agents/tech-lead.md
 
-Create the blog index page with:
-- Grid layout for posts
-- Category sidebar
-- Search bar
-- Pagination
-- "New Post" button for authenticated users
+Lanjutkan dari Product Agent.
+Kebutuhan produk sudah di-approve client.
 ```
 
+### Step 3: Developer Agent (after tech design approved)
 ```
-@workflow/TASK_AGENT.md
+@workflow/agents/developer.md
 
-Create the single post page with:
-- Full post content display
-- Author and date info
-- Comments section
-- Comment form for logged-in users
-- Related posts sidebar
+Implement blog system dengan fitur:
+- Blog index page dengan grid layout, category sidebar, search, pagination
+- Single post page dengan comments section
+- Create/edit post form
+- Category management
+```
+
+### Step 4: QA Agent (after implementation approved)
+```
+@workflow/agents/qa.md
+
+Test blog system:
+- CRUD operations untuk posts
+- Comments functionality
+- Authentication & authorization
+- Responsive design
+```
+
+### Step 5: DevOps Agent (after QA approved)
+```
+@workflow/agents/devops.md
+
+Deploy blog system ke production.
 ```
 
 ## Next Steps
