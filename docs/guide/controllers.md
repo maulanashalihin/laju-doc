@@ -1,21 +1,21 @@
-# Controllers
+# Handlers
 
-Learn how to create controllers in Laju Framework.
+Learn how to create handlers in Laju Framework.
 
-## Creating a Controller
+## Creating a Handler
 
 **Using CLI:**
 ```bash
-node laju make:controller PostController
+node laju make:controller PostHandler
 ```
 
-**Manual creation** (`app/controllers/PostController.ts`):
+**Manual creation** (`app/handlers/post.handler.ts`):
 
 ```typescript
 import { Request, Response } from "../../type";
 import DB from "../services/DB";
 
-export const PostController = {
+export const PostHandler = {
   // List all posts
   async index(request: Request, response: Response) {
     const posts = await DB.selectFrom("posts")
@@ -33,7 +33,7 @@ export const PostController = {
   // Store new post
   async store(request: Request, response: Response) {
     const { title, content } = await request.json();
-    
+
     await DB.insertInto("posts").values({
       title,
       content,
@@ -41,7 +41,7 @@ export const PostController = {
       created_at: Date.now(),
       updated_at: Date.now()
     }).execute();
-    
+
     return response.redirect("/posts");
   },
 
@@ -52,11 +52,11 @@ export const PostController = {
       .selectAll()
       .where("id", "=", id)
       .executeTakeFirst();
-    
+
     if (!post) {
       return response.status(404).json({ error: "Post not found" });
     }
-    
+
     return response.inertia("posts/show", { post });
   },
 
@@ -67,11 +67,11 @@ export const PostController = {
       .selectAll()
       .where("id", "=", id)
       .executeTakeFirst();
-    
+
     if (!post) {
       return response.status(404).json({ error: "Post not found" });
     }
-    
+
     return response.inertia("posts/edit", { post });
   },
 
@@ -79,7 +79,7 @@ export const PostController = {
   async update(request: Request, response: Response) {
     const { id } = request.params;
     const { title, content } = await request.json();
-    
+
     await DB.updateTable("posts")
       .set({
         title,
@@ -88,7 +88,7 @@ export const PostController = {
       })
       .where("id", "=", id)
       .execute();
-    
+
     return response.redirect("/posts");
   },
 
@@ -100,20 +100,20 @@ export const PostController = {
   }
 };
 
-export default PostController;
+export default PostHandler;
 ```
 
-## Controller Organization
+## Handler Organization
 
-### ✅ Controller Pattern: Plain Objects
+### ✅ Handler Pattern: Plain Objects
 
-**Laju controllers are plain objects, not classes.** This makes them simpler and more predictable.
+**Laju handlers are plain objects, not classes.** This makes them simpler and more predictable.
 
 #### ✅ Correct Pattern
 
 ```typescript
 // ✅ CORRECT - Plain object pattern
-export const UserController = {
+export const UserHandler = {
   async store(request: Request, response: Response) {
     const body = await request.json();
     const validated = validateUser(body);
@@ -127,7 +127,7 @@ export const UserController = {
   }
 };
 
-export default UserController;
+export default UserHandler;
 ```
 
 #### ✅ Use Separate Utility Functions
@@ -136,7 +136,7 @@ export default UserController;
 // ✅ ALSO CORRECT - Extract to utility function
 import { validateUser } from "../utils/validation";
 
-export const UserController = {
+export const UserHandler = {
   async store(request: Request, response: Response) {
     const body = await request.json();
     const validated = validateUser(body);
@@ -145,7 +145,7 @@ export const UserController = {
   }
 };
 
-export default UserController;
+export default UserHandler;
 ```
 
 #### Service Layer Pattern
@@ -162,10 +162,10 @@ export const UserService = {
 
 export default UserService;
 
-// In controller
+// In handler
 import UserService from "../services/UserService";
 
-export const UserController = {
+export const UserHandler = {
   async store(request: Request, response: Response) {
     const body = await request.json();
     const user = await UserService.create(body);
@@ -173,7 +173,55 @@ export const UserController = {
   }
 };
 
-export default UserController;
+export default UserHandler;
+```
+
+#### Repository Pattern
+
+For better separation of concerns, use repositories for data access:
+
+```typescript
+// app/repositories/user.repository.ts
+import DB from "../services/DB";
+
+export const UserRepository = {
+  async findById(id: string) {
+    return await DB.selectFrom("users")
+      .selectAll()
+      .where("id", "=", id)
+      .executeTakeFirst();
+  },
+
+  async create(data: any) {
+    return await DB.insertInto("users")
+      .values(data)
+      .returningAll()
+      .executeTakeFirst();
+  },
+
+  async update(id: string, data: any) {
+    return await DB.updateTable("users")
+      .set(data)
+      .where("id", "=", id)
+      .returningAll()
+      .executeTakeFirst();
+  }
+};
+
+export default UserRepository;
+
+// In handler
+import UserRepository from "../repositories/user.repository";
+
+export const UserHandler = {
+  async show(request: Request, response: Response) {
+    const user = await UserRepository.findById(request.params.id);
+    if (!user) {
+      return response.status(404).json({ error: "User not found" });
+    }
+    return response.json({ user });
+  }
+};
 ```
 
 ## Request & Response
@@ -272,7 +320,7 @@ async update(request: Request, response: Response) {
 
 Flash messages allow you to send temporary messages to the next request via cookies.
 
-### Usage in Controller
+### Usage in Handler
 
 ```typescript
 // Send error message

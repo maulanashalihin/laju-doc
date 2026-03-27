@@ -58,7 +58,7 @@ export default withMermaid(
             items: [
               { text: 'Project Structure', link: '/guide/project-structure' },
               { text: 'Routing', link: '/guide/routing' },
-              { text: 'Controllers', link: '/guide/controllers' },
+              { text: 'Handlers', link: '/guide/controllers' },
               { text: 'Database', link: '/guide/database' },
             ]
           },
